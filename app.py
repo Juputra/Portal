@@ -114,7 +114,8 @@ class Portal:
             flash('Anda telah berhasil logout.', 'info')
             return redirect(url_for('login'))
 
-        # --- Rute Admin ---
+        # === Rute Admin ===
+        # --- Admin Dashboard ---
         @self.app.route('/admin/dashboard')
         @self.admin_login_required
         def dashboard_admin():
@@ -134,6 +135,7 @@ class Portal:
             admins = self.con.get_users_by_role('admin') # Jika Anda ingin menampilkan admin juga
             return render_template('admin/users_admin.html', gurus=gurus, murids=murids, admins=admins)
 
+        # --- Tambah Pengguna (Admin) ---
         @self.app.route('/admin/users/add', methods=['GET', 'POST'])
         @self.admin_login_required
         def add_user_admin():
@@ -164,6 +166,257 @@ class Portal:
                         flash('Gagal menambahkan pengguna. Periksa log server untuk detail.', 'danger')
             
             return render_template('admin/user_form_admin.html', action='Tambah', user_data=None)
+
+        # --- Update Pengguna (Admin) ---
+        @self.app.route('/admin/users/edit/<int:user_id>', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def edit_user_admin(user_id):
+            user_to_edit = self.con.get_user_by_id(user_id)
+            if not user_to_edit:
+                flash(f"Pengguna dengan ID {user_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('users_admin'))
+
+            if request.method == 'POST':
+                # Hati-hati dengan checkbox status_aktif
+                status_aktif_form = 'status_aktif' in request.form
+
+                user_data = {
+                    'username': request.form['username'].strip(),
+                    'nama_lengkap': request.form['nama_lengkap'].strip(),
+                    'email': request.form['email'].strip(),
+                    'peran': request.form['peran'],
+                    'nomor_induk': request.form.get('nomor_induk','').strip() or None,
+                    'status_aktif': status_aktif_form
+                    # Password hanya diupdate jika diisi
+                }
+                password_baru = request.form.get('password','').strip()
+                if password_baru: # Jika ada input password baru
+                    user_data['password'] = password_baru # akan di-hash di Config.update_user
+
+                # Validasi dasar
+                if not all([user_data['username'], user_data['nama_lengkap'], user_data['email'], user_data['peran']]):
+                    flash('Username, Nama Lengkap, Email, dan Peran wajib diisi.', 'danger')
+                else:
+                    # Cek duplikasi username/email (kecuali untuk user yang sedang diedit)
+                    # Implementasi cek duplikasi ini bisa lebih baik di Config.update_user
+                    
+                    if self.con.update_user(user_id, user_data):
+                        flash(f"Data pengguna '{user_data['nama_lengkap']}' berhasil diupdate!", 'success')
+                        return redirect(url_for('users_admin'))
+                    else:
+                        flash('Gagal mengupdate data pengguna. Periksa log server.', 'danger')
+                # Jika validasi gagal atau update gagal, render form lagi dengan data yang ada
+                # Kita perlu mengisi kembali user_to_edit dengan data form agar perubahan tidak hilang
+                user_to_edit.update(user_data) 
+                if 'password' in user_to_edit: del user_to_edit['password'] # jangan kirim password plain ke template
+
+            return render_template('admin/user_form_admin.html', action='Edit', user_data=user_to_edit)
+        
+        # --- Hapus Pengguna (Admin) ---
+        @self.app.route('/admin/users/delete/<int:user_id>', methods=['POST']) # Gunakan POST untuk aksi hapus
+        @self.admin_login_required
+        def delete_user_admin(user_id):
+            # Untuk keamanan, Anda bisa cek dulu apakah user yang akan dihapus bukan admin itu sendiri
+            # atau satu-satunya admin.
+            if session.get('user_id') == user_id:
+                flash("Anda tidak dapat menghapus akun Anda sendiri.", "danger")
+                return redirect(url_for('users_admin'))
+
+            user_to_delete = self.con.get_user_by_id(user_id)
+            if not user_to_delete:
+                 flash(f"Pengguna dengan ID {user_id} tidak ditemukan.", 'danger')
+                 return redirect(url_for('users_admin'))
+
+            # Khusus: Jangan biarkan admin terakhir dihapus (opsional tapi disarankan)
+            if user_to_delete['peran'] == 'admin':
+                admins = self.con.get_users_by_role('admin')
+                if len(admins) <= 1:
+                    flash("Tidak dapat menghapus satu-satunya admin.", "danger")
+                    return redirect(url_for('users_admin'))
+
+            if self.con.delete_user(user_id):
+                flash(f"Pengguna '{user_to_delete['nama_lengkap']}' berhasil dihapus.", 'success')
+            else:
+                flash(f"Gagal menghapus pengguna '{user_to_delete['nama_lengkap']}'. Periksa log server.", 'danger')
+            return redirect(url_for('users_admin'))
+        
+        # --- Manajemen Kelas (Admin) ---
+        @self.app.route('/admin/kelas')
+        @self.admin_login_required
+        def kelas_admin():
+            kelas_list = self.con.get_all_kelas() # Menggunakan metode dari Config Anda
+            return render_template('admin/kelas_admin.html', kelas_list=kelas_list)
+
+        # --- Menambahkan Kelas (Admin) ---
+        @self.app.route('/admin/kelas/add', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def add_kelas_admin():
+            if request.method == 'POST':
+                id_wali_kelas_str = request.form.get('id_wali_kelas')
+                kelas_data = {
+                    'nama_kelas': request.form['nama_kelas'].strip(),
+                    'tahun_ajaran': request.form['tahun_ajaran'].strip(),
+                    'id_wali_kelas': int(id_wali_kelas_str) if id_wali_kelas_str and id_wali_kelas_str.isdigit() else None,
+                    'deskripsi': request.form.get('deskripsi','').strip()
+                }
+                if not kelas_data['nama_kelas'] or not kelas_data['tahun_ajaran']:
+                     flash('Nama Kelas dan Tahun Ajaran wajib diisi.', 'danger')
+                else:
+                    kelas_id = self.con.add_kelas(kelas_data) # Menggunakan metode dari Config Anda
+                    if kelas_id:
+                        flash(f"Kelas '{kelas_data['nama_kelas']}' berhasil ditambahkan!", 'success')
+                        return redirect(url_for('kelas_admin'))
+                    else:
+                        flash('Gagal menambahkan kelas. Periksa log server.', 'danger')
+            
+            list_guru = self.con.get_users_by_role('guru') # Menggunakan metode dari Config Anda
+            return render_template('admin/kelas_form_admin.html', action='Tambah', kelas_data=None, list_guru=list_guru)
+        
+        # --- Update Kelas (Admin)---
+        @self.app.route('/admin/kelas/edit/<int:kelas_id>', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def edit_kelas_admin(kelas_id):
+            kelas_to_edit = self.con.get_kelas_by_id(kelas_id) # Ini mengambil dict, termasuk nama_wali_kelas
+            if not kelas_to_edit:
+                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('kelas_admin'))
+
+            if request.method == 'POST':
+                id_wali_kelas_str = request.form.get('id_wali_kelas')
+                kelas_data = {
+                    'nama_kelas': request.form['nama_kelas'].strip(),
+                    'tahun_ajaran': request.form['tahun_ajaran'].strip(),
+                    'id_wali_kelas': int(id_wali_kelas_str) if id_wali_kelas_str and id_wali_kelas_str.isdigit() else None,
+                    'deskripsi': request.form.get('deskripsi','').strip()
+                }
+                if not kelas_data['nama_kelas'] or not kelas_data['tahun_ajaran']:
+                     flash('Nama Kelas dan Tahun Ajaran wajib diisi.', 'danger')
+                else:
+                    if self.con.update_kelas(kelas_id, kelas_data): # Anda perlu buat metode ini di Config
+                        flash(f"Data kelas '{kelas_data['nama_kelas']}' berhasil diupdate!", 'success')
+                        return redirect(url_for('kelas_admin'))
+                    else:
+                        flash('Gagal mengupdate data kelas. Periksa log server.', 'danger')
+                # Isi kembali data form jika ada error
+                kelas_to_edit.update(kelas_data)
+
+            list_guru = self.con.get_users_by_role('guru')
+            return render_template('admin/kelas_form_admin.html', action='Edit', kelas_data=kelas_to_edit, list_guru=list_guru)
+
+        # --- Hapus Kelas (Admin) ---
+        @self.app.route('/admin/kelas/delete/<int:kelas_id>', methods=['POST'])
+        @self.admin_login_required
+        def delete_kelas_admin(kelas_id):
+            kelas_to_delete = self.con.get_kelas_by_id(kelas_id) # Untuk nama di pesan flash
+            if not kelas_to_delete:
+                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('kelas_admin'))
+
+            if self.con.delete_kelas(kelas_id):
+                flash(f"Kelas '{kelas_to_delete['nama_kelas']}' berhasil dihapus.", 'success')
+            else:
+                flash(f"Gagal menghapus kelas '{kelas_to_delete['nama_kelas']}'. Periksa log server.", 'danger')
+            return redirect(url_for('kelas_admin'))
+        
+        # --- Detail Kelas (Admin) ---
+        @self.app.route('/admin/kelas/detail/<int:kelas_id>')
+        @self.admin_login_required
+        def kelas_detail_admin(kelas_id):
+            kelas_info = self.con.get_kelas_by_id(kelas_id)
+            if not kelas_info:
+                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('kelas_admin'))
+            
+            students_in_class = self.con.get_students_in_class(kelas_id)
+            return render_template('admin/kelas_detail_admin.html', kelas_info=kelas_info, students=students_in_class)
+        
+        # --- Enroll Murid ke Kelas (Admin) ---
+        @self.app.route('/admin/kelas/<int:kelas_id>/enroll', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def enroll_student_kelas_admin(kelas_id):
+            kelas_info = self.con.get_kelas_by_id(kelas_id)
+            if not kelas_info:
+                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('kelas_admin'))
+
+            if request.method == 'POST':
+                murid_id_to_enroll = request.form.get('id_murid')
+                if not murid_id_to_enroll:
+                    flash("Pilih murid yang akan didaftarkan.", "warning")
+                else:
+                    murid_id_to_enroll = int(murid_id_to_enroll)
+                    # Tahun ajaran diambil dari info kelas yang sedang dilihat
+                    tahun_ajaran = kelas_info['tahun_ajaran'] 
+                    
+                    if self.con.enroll_student_to_class(murid_id_to_enroll, kelas_id, tahun_ajaran):
+                        murid_info = self.con.get_user_by_id(murid_id_to_enroll)
+                        flash(f"Murid '{murid_info['nama_lengkap'] if murid_info else 'ID: '+str(murid_id_to_enroll)}' berhasil didaftarkan ke kelas '{kelas_info['nama_kelas']}'.", 'success')
+                        return redirect(url_for('kelas_detail_admin', kelas_id=kelas_id))
+                    else:
+                        flash(f"Gagal mendaftarkan murid ke kelas. Mungkin murid sudah terdaftar atau terjadi kesalahan.", 'danger')
+            
+            # Ambil daftar murid yang bisa di-enroll (belum ada di kelas ini atau belum punya kelas di tahun ajaran ini)
+            # Tahun ajaran diambil dari kelas_info
+            available_students = self.con.get_all_active_murid_exclude_kelas(kelas_id, kelas_info['tahun_ajaran'])
+            return render_template('admin/enroll_student_kelas_form.html', kelas_info=kelas_info, available_students=available_students)
+        
+        # --- Keluarkan Murid dari Kelas (Admin) ---
+        @self.app.route('/admin/kelas/<int:kelas_id>/remove_student/<int:murid_id>', methods=['POST'])
+        @self.admin_login_required
+        def remove_student_from_kelas_admin(kelas_id, murid_id):
+            kelas_info = self.con.get_kelas_by_id(kelas_id)
+            if not kelas_info:
+                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('kelas_admin'))
+
+            murid_info = self.con.get_user_by_id(murid_id)
+            if not murid_info:
+                flash(f"Murid dengan ID {murid_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('kelas_detail_admin', kelas_id=kelas_id))
+
+            tahun_ajaran = kelas_info['tahun_ajaran'] 
+            # Status baru bisa 'dropout' atau 'pindah', atau status kustom jika ada
+            if self.con.update_enrollment_status(murid_id, kelas_id, tahun_ajaran, new_status='dropout'):
+                flash(f"Murid '{murid_info['nama_lengkap']}' telah dikeluarkan (status diubah menjadi 'dropout') dari kelas '{kelas_info['nama_kelas']}'.", 'success')
+            else:
+                flash(f"Gagal mengeluarkan murid '{murid_info['nama_lengkap']}' dari kelas. Periksa log server.", 'danger')
+            return redirect(url_for('kelas_detail_admin', kelas_id=kelas_id))
+        
+        # --- Manajemen Ekstrakurikuler (Admin) ---
+        @self.app.route('/admin/ekskul')
+        @self.admin_login_required
+        def ekskul_admin():
+            ekskul_list = self.con.get_all_ekskul() # Menggunakan metode dari Config Anda
+            return render_template('admin/ekskul_admin.html', ekskul_list=ekskul_list)
+
+        @self.app.route('/admin/ekskul/add', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def add_ekskul_admin():
+            if request.method == 'POST':
+                id_guru_pembina_str = request.form.get('id_guru_pembina')
+                ekskul_data = {
+                    'nama_ekskul': request.form['nama_ekskul'].strip(),
+                    'id_guru_pembina': int(id_guru_pembina_str) if id_guru_pembina_str and id_guru_pembina_str.isdigit() else None,
+                    'jadwal_deskripsi': request.form['jadwal_deskripsi'].strip(),
+                    'lokasi': request.form.get('lokasi','').strip(),
+                    'kuota_maksimal': int(request.form['kuota_maksimal']) if request.form.get('kuota_maksimal','').isdigit() else None,
+                    'deskripsi': request.form.get('deskripsi','').strip(),
+                    'kategori': request.form.get('kategori','').strip(),
+                    'status_aktif': 'status_aktif' in request.form, 
+                    'url_logo_ekskul': request.form.get('url_logo_ekskul','').strip() # Asumsi ada field ini di form
+                }
+                if not ekskul_data['nama_ekskul']:
+                    flash('Nama Ekstrakurikuler wajib diisi.', 'danger')
+                else:
+                    ekskul_id = self.con.add_ekskul(ekskul_data) # Menggunakan metode dari Config Anda
+                    if ekskul_id:
+                        flash(f"Ekstrakurikuler '{ekskul_data['nama_ekskul']}' berhasil ditambahkan!", 'success')
+                        return redirect(url_for('ekskul_admin'))
+                    else:
+                        flash('Gagal menambahkan ekstrakurikuler. Periksa log server.', 'danger')
+                
+            list_guru = self.con.get_users_by_role('guru') # Menggunakan metode dari Config Anda
+            return render_template('admin/ekskul_form_admin.html', action='Tambah', ekskul_data=None, list_guru=list_guru)
 
         # --- Edit Ekstrakurikuler (Admin) ---
         @self.app.route('/admin/ekskul/edit/<int:ekskul_id>', methods=['GET', 'POST'])
@@ -215,35 +468,26 @@ class Portal:
                 flash(f"Gagal menghapus ekstrakurikuler '{ekskul_to_delete['nama_ekskul']}'. Mungkin masih ada data terkait (murid terdaftar). Periksa log server.", 'danger')
             return redirect(url_for('ekskul_admin'))
 
-        # --- Enroll Murid ke Kelas (Admin) ---
-        @self.app.route('/admin/kelas/<int:kelas_id>/enroll', methods=['GET', 'POST'])
+        # --- Detail Ekstrakurikuler (Admin) ---
+        @self.app.route('/admin/ekskul/detail/<int:ekskul_id>')
         @self.admin_login_required
-        def enroll_student_kelas_admin(kelas_id):
-            kelas_info = self.con.get_kelas_by_id(kelas_id)
-            if not kelas_info:
-                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('kelas_admin'))
-
-            if request.method == 'POST':
-                murid_id_to_enroll = request.form.get('id_murid')
-                if not murid_id_to_enroll:
-                    flash("Pilih murid yang akan didaftarkan.", "warning")
-                else:
-                    murid_id_to_enroll = int(murid_id_to_enroll)
-                    # Tahun ajaran diambil dari info kelas yang sedang dilihat
-                    tahun_ajaran = kelas_info['tahun_ajaran'] 
-                    
-                    if self.con.enroll_student_to_class(murid_id_to_enroll, kelas_id, tahun_ajaran):
-                        murid_info = self.con.get_user_by_id(murid_id_to_enroll)
-                        flash(f"Murid '{murid_info['nama_lengkap'] if murid_info else 'ID: '+str(murid_id_to_enroll)}' berhasil didaftarkan ke kelas '{kelas_info['nama_kelas']}'.", 'success')
-                        return redirect(url_for('kelas_detail_admin', kelas_id=kelas_id))
-                    else:
-                        flash(f"Gagal mendaftarkan murid ke kelas. Mungkin murid sudah terdaftar atau terjadi kesalahan.", 'danger')
+        def ekskul_detail_admin(ekskul_id):
+            ekskul_info = self.con.get_ekskul_by_id(ekskul_id) # Asumsi metode ini sudah ada
+            if not ekskul_info:
+                flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('ekskul_admin'))
             
-            # Ambil daftar murid yang bisa di-enroll (belum ada di kelas ini atau belum punya kelas di tahun ajaran ini)
-            # Tahun ajaran diambil dari kelas_info
-            available_students = self.con.get_all_active_murid_exclude_kelas(kelas_id, kelas_info['tahun_ajaran'])
-            return render_template('admin/enroll_student_kelas_form.html', kelas_info=kelas_info, available_students=available_students)
+            # Asumsi tahun ajaran aktif bisa didapatkan, atau diambil dari ekskul_info jika relevan
+            # Untuk contoh, kita gunakan tahun ajaran default atau yang paling baru.
+            # Anda mungkin perlu logika lebih canggih untuk menentukan tahun ajaran aktif.
+            current_tahun_ajaran = "2024/2025" # GANTI DENGAN LOGIKA TAHUN AJARAN AKTIF ANDA
+            
+            members = self.con.get_members_of_ekskul(ekskul_id, current_tahun_ajaran)
+            
+            return render_template('admin/ekskul_detail_admin.html', 
+                                   ekskul_info=ekskul_info, 
+                                   members=members,
+                                   tahun_ajaran_display=current_tahun_ajaran)
 
         # --- Daftarkan Murid ke Ekstrakurikuler (Admin) ---
         @self.app.route('/admin/ekskul/<int:ekskul_id>/register', methods=['GET', 'POST'])
@@ -277,27 +521,6 @@ class Portal:
             available_students = self.con.get_all_active_murid_exclude_ekskul(ekskul_id, current_tahun_ajaran)
             return render_template('admin/register_student_ekskul_form.html', ekskul_info=ekskul_info, available_students=available_students, current_tahun_ajaran=current_tahun_ajaran)
 
-        # --- Detail Ekstrakurikuler (Admin) ---
-        @self.app.route('/admin/ekskul/detail/<int:ekskul_id>')
-        @self.admin_login_required
-        def ekskul_detail_admin(ekskul_id):
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id) # Asumsi metode ini sudah ada
-            if not ekskul_info:
-                flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('ekskul_admin'))
-            
-            # Asumsi tahun ajaran aktif bisa didapatkan, atau diambil dari ekskul_info jika relevan
-            # Untuk contoh, kita gunakan tahun ajaran default atau yang paling baru.
-            # Anda mungkin perlu logika lebih canggih untuk menentukan tahun ajaran aktif.
-            current_tahun_ajaran = "2024/2025" # GANTI DENGAN LOGIKA TAHUN AJARAN AKTIF ANDA
-            
-            members = self.con.get_members_of_ekskul(ekskul_id, current_tahun_ajaran)
-            
-            return render_template('admin/ekskul_detail_admin.html', 
-                                   ekskul_info=ekskul_info, 
-                                   members=members,
-                                   tahun_ajaran_display=current_tahun_ajaran)
-
         # --- Keluarkan Murid dari Ekskul (Admin) ---
         @self.app.route('/admin/ekskul/remove_member/<int:pendaftaran_id>', methods=['POST'])
         @self.admin_login_required
@@ -317,112 +540,6 @@ class Portal:
             if ekskul_id_redirect:
                 return redirect(url_for('ekskul_detail_admin', ekskul_id=ekskul_id_redirect))
             return redirect(url_for('ekskul_admin')) # Fallback jika tidak ada redirect ID
-
-        # --- Keluarkan Murid dari Kelas (Admin) ---
-        @self.app.route('/admin/kelas/<int:kelas_id>/remove_student/<int:murid_id>', methods=['POST'])
-        @self.admin_login_required
-        def remove_student_from_kelas_admin(kelas_id, murid_id):
-            kelas_info = self.con.get_kelas_by_id(kelas_id)
-            if not kelas_info:
-                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('kelas_admin'))
-
-            murid_info = self.con.get_user_by_id(murid_id)
-            if not murid_info:
-                flash(f"Murid dengan ID {murid_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('kelas_detail_admin', kelas_id=kelas_id))
-
-            tahun_ajaran = kelas_info['tahun_ajaran'] 
-            # Status baru bisa 'dropout' atau 'pindah', atau status kustom jika ada
-            if self.con.update_enrollment_status(murid_id, kelas_id, tahun_ajaran, new_status='dropout'):
-                flash(f"Murid '{murid_info['nama_lengkap']}' telah dikeluarkan (status diubah menjadi 'dropout') dari kelas '{kelas_info['nama_kelas']}'.", 'success')
-            else:
-                flash(f"Gagal mengeluarkan murid '{murid_info['nama_lengkap']}' dari kelas. Periksa log server.", 'danger')
-            return redirect(url_for('kelas_detail_admin', kelas_id=kelas_id))
-
-        # --- Manajemen Kelas (Admin) ---
-        @self.app.route('/admin/kelas')
-        @self.admin_login_required
-        def kelas_admin():
-            kelas_list = self.con.get_all_kelas() # Menggunakan metode dari Config Anda
-            return render_template('admin/kelas_admin.html', kelas_list=kelas_list)
-
-        @self.app.route('/admin/kelas/add', methods=['GET', 'POST'])
-        @self.admin_login_required
-        def add_kelas_admin():
-            if request.method == 'POST':
-                id_wali_kelas_str = request.form.get('id_wali_kelas')
-                kelas_data = {
-                    'nama_kelas': request.form['nama_kelas'].strip(),
-                    'tahun_ajaran': request.form['tahun_ajaran'].strip(),
-                    'id_wali_kelas': int(id_wali_kelas_str) if id_wali_kelas_str and id_wali_kelas_str.isdigit() else None,
-                    'deskripsi': request.form.get('deskripsi','').strip()
-                }
-                if not kelas_data['nama_kelas'] or not kelas_data['tahun_ajaran']:
-                     flash('Nama Kelas dan Tahun Ajaran wajib diisi.', 'danger')
-                else:
-                    kelas_id = self.con.add_kelas(kelas_data) # Menggunakan metode dari Config Anda
-                    if kelas_id:
-                        flash(f"Kelas '{kelas_data['nama_kelas']}' berhasil ditambahkan!", 'success')
-                        return redirect(url_for('kelas_admin'))
-                    else:
-                        flash('Gagal menambahkan kelas. Periksa log server.', 'danger')
-            
-            list_guru = self.con.get_users_by_role('guru') # Menggunakan metode dari Config Anda
-            return render_template('admin/kelas_form_admin.html', action='Tambah', kelas_data=None, list_guru=list_guru)
-        @self.app.route('/admin/kelas/detail/<int:kelas_id>')
-        @self.admin_login_required
-        def kelas_detail_admin(kelas_id):
-            kelas_info = self.con.get_kelas_by_id(kelas_id)
-            if not kelas_info:
-                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('kelas_admin'))
-            
-            students_in_class = self.con.get_students_in_class(kelas_id)
-            return render_template('admin/kelas_detail_admin.html', kelas_info=kelas_info, students=students_in_class)
-        @self.app.route('/admin/users/edit/<int:user_id>', methods=['GET', 'POST'])
-        @self.admin_login_required
-        def edit_user_admin(user_id):
-            user_to_edit = self.con.get_user_by_id(user_id)
-            if not user_to_edit:
-                flash(f"Pengguna dengan ID {user_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('users_admin'))
-
-            if request.method == 'POST':
-                # Hati-hati dengan checkbox status_aktif
-                status_aktif_form = 'status_aktif' in request.form
-
-                user_data = {
-                    'username': request.form['username'].strip(),
-                    'nama_lengkap': request.form['nama_lengkap'].strip(),
-                    'email': request.form['email'].strip(),
-                    'peran': request.form['peran'],
-                    'nomor_induk': request.form.get('nomor_induk','').strip() or None,
-                    'status_aktif': status_aktif_form
-                    # Password hanya diupdate jika diisi
-                }
-                password_baru = request.form.get('password','').strip()
-                if password_baru: # Jika ada input password baru
-                    user_data['password'] = password_baru # akan di-hash di Config.update_user
-
-                # Validasi dasar
-                if not all([user_data['username'], user_data['nama_lengkap'], user_data['email'], user_data['peran']]):
-                    flash('Username, Nama Lengkap, Email, dan Peran wajib diisi.', 'danger')
-                else:
-                    # Cek duplikasi username/email (kecuali untuk user yang sedang diedit)
-                    # Implementasi cek duplikasi ini bisa lebih baik di Config.update_user
-                    
-                    if self.con.update_user(user_id, user_data):
-                        flash(f"Data pengguna '{user_data['nama_lengkap']}' berhasil diupdate!", 'success')
-                        return redirect(url_for('users_admin'))
-                    else:
-                        flash('Gagal mengupdate data pengguna. Periksa log server.', 'danger')
-                # Jika validasi gagal atau update gagal, render form lagi dengan data yang ada
-                # Kita perlu mengisi kembali user_to_edit dengan data form agar perubahan tidak hilang
-                user_to_edit.update(user_data) 
-                if 'password' in user_to_edit: del user_to_edit['password'] # jangan kirim password plain ke template
-
-            return render_template('admin/user_form_admin.html', action='Edit', user_data=user_to_edit)
 
         # --- Manajemen Pengumuman (Admin) ---
         @self.app.route('/admin/pengumuman')
@@ -476,115 +593,6 @@ class Portal:
                                    list_kelas=list_kelas,
                                    list_ekskul=list_ekskul)
 
-        # --- Hapus Pengguna (Admin) ---
-        @self.app.route('/admin/users/delete/<int:user_id>', methods=['POST']) # Gunakan POST untuk aksi hapus
-        @self.admin_login_required
-        def delete_user_admin(user_id):
-            # Untuk keamanan, Anda bisa cek dulu apakah user yang akan dihapus bukan admin itu sendiri
-            # atau satu-satunya admin.
-            if session.get('user_id') == user_id:
-                flash("Anda tidak dapat menghapus akun Anda sendiri.", "danger")
-                return redirect(url_for('users_admin'))
-
-            user_to_delete = self.con.get_user_by_id(user_id)
-            if not user_to_delete:
-                 flash(f"Pengguna dengan ID {user_id} tidak ditemukan.", 'danger')
-                 return redirect(url_for('users_admin'))
-
-            # Khusus: Jangan biarkan admin terakhir dihapus (opsional tapi disarankan)
-            if user_to_delete['peran'] == 'admin':
-                admins = self.con.get_users_by_role('admin')
-                if len(admins) <= 1:
-                    flash("Tidak dapat menghapus satu-satunya admin.", "danger")
-                    return redirect(url_for('users_admin'))
-
-            if self.con.delete_user(user_id):
-                flash(f"Pengguna '{user_to_delete['nama_lengkap']}' berhasil dihapus.", 'success')
-            else:
-                flash(f"Gagal menghapus pengguna '{user_to_delete['nama_lengkap']}'. Periksa log server.", 'danger')
-            return redirect(url_for('users_admin'))
-        @self.app.route('/admin/kelas/edit/<int:kelas_id>', methods=['GET', 'POST'])
-        @self.admin_login_required
-        def edit_kelas_admin(kelas_id):
-            kelas_to_edit = self.con.get_kelas_by_id(kelas_id) # Ini mengambil dict, termasuk nama_wali_kelas
-            if not kelas_to_edit:
-                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('kelas_admin'))
-
-            if request.method == 'POST':
-                id_wali_kelas_str = request.form.get('id_wali_kelas')
-                kelas_data = {
-                    'nama_kelas': request.form['nama_kelas'].strip(),
-                    'tahun_ajaran': request.form['tahun_ajaran'].strip(),
-                    'id_wali_kelas': int(id_wali_kelas_str) if id_wali_kelas_str and id_wali_kelas_str.isdigit() else None,
-                    'deskripsi': request.form.get('deskripsi','').strip()
-                }
-                if not kelas_data['nama_kelas'] or not kelas_data['tahun_ajaran']:
-                     flash('Nama Kelas dan Tahun Ajaran wajib diisi.', 'danger')
-                else:
-                    if self.con.update_kelas(kelas_id, kelas_data): # Anda perlu buat metode ini di Config
-                        flash(f"Data kelas '{kelas_data['nama_kelas']}' berhasil diupdate!", 'success')
-                        return redirect(url_for('kelas_admin'))
-                    else:
-                        flash('Gagal mengupdate data kelas. Periksa log server.', 'danger')
-                # Isi kembali data form jika ada error
-                kelas_to_edit.update(kelas_data)
-
-            list_guru = self.con.get_users_by_role('guru')
-            return render_template('admin/kelas_form_admin.html', action='Edit', kelas_data=kelas_to_edit, list_guru=list_guru)
-
-        # --- Hapus Kelas (Admin) ---
-        @self.app.route('/admin/kelas/delete/<int:kelas_id>', methods=['POST'])
-        @self.admin_login_required
-        def delete_kelas_admin(kelas_id):
-            kelas_to_delete = self.con.get_kelas_by_id(kelas_id) # Untuk nama di pesan flash
-            if not kelas_to_delete:
-                flash(f"Kelas dengan ID {kelas_id} tidak ditemukan.", 'danger')
-                return redirect(url_for('kelas_admin'))
-
-            if self.con.delete_kelas(kelas_id):
-                flash(f"Kelas '{kelas_to_delete['nama_kelas']}' berhasil dihapus.", 'success')
-            else:
-                flash(f"Gagal menghapus kelas '{kelas_to_delete['nama_kelas']}'. Periksa log server.", 'danger')
-            return redirect(url_for('kelas_admin'))
-
-        # --- Manajemen Ekstrakurikuler (Admin) ---
-        @self.app.route('/admin/ekskul')
-        @self.admin_login_required
-        def ekskul_admin():
-            ekskul_list = self.con.get_all_ekskul() # Menggunakan metode dari Config Anda
-            return render_template('admin/ekskul_admin.html', ekskul_list=ekskul_list)
-
-        @self.app.route('/admin/ekskul/add', methods=['GET', 'POST'])
-        @self.admin_login_required
-        def add_ekskul_admin():
-            if request.method == 'POST':
-                id_guru_pembina_str = request.form.get('id_guru_pembina')
-                ekskul_data = {
-                    'nama_ekskul': request.form['nama_ekskul'].strip(),
-                    'id_guru_pembina': int(id_guru_pembina_str) if id_guru_pembina_str and id_guru_pembina_str.isdigit() else None,
-                    'jadwal_deskripsi': request.form['jadwal_deskripsi'].strip(),
-                    'lokasi': request.form.get('lokasi','').strip(),
-                    'kuota_maksimal': int(request.form['kuota_maksimal']) if request.form.get('kuota_maksimal','').isdigit() else None,
-                    'deskripsi': request.form.get('deskripsi','').strip(),
-                    'kategori': request.form.get('kategori','').strip(),
-                    'status_aktif': 'status_aktif' in request.form, 
-                    'url_logo_ekskul': request.form.get('url_logo_ekskul','').strip() # Asumsi ada field ini di form
-                }
-                if not ekskul_data['nama_ekskul']:
-                    flash('Nama Ekstrakurikuler wajib diisi.', 'danger')
-                else:
-                    ekskul_id = self.con.add_ekskul(ekskul_data) # Menggunakan metode dari Config Anda
-                    if ekskul_id:
-                        flash(f"Ekstrakurikuler '{ekskul_data['nama_ekskul']}' berhasil ditambahkan!", 'success')
-                        return redirect(url_for('ekskul_admin'))
-                    else:
-                        flash('Gagal menambahkan ekstrakurikuler. Periksa log server.', 'danger')
-                
-            list_guru = self.con.get_users_by_role('guru') # Menggunakan metode dari Config Anda
-            return render_template('admin/ekskul_form_admin.html', action='Tambah', ekskul_data=None, list_guru=list_guru)
-
-        # TODO: Tambahkan rute untuk EDIT dan DELETE untuk Users, Kelas, Ekskul
 
     # --- Rute Dashboard Guru (Diperbarui) ---
         @self.app.route('/guru/dashboard')
