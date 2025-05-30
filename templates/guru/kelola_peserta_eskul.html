@@ -1,0 +1,95 @@
+{% extends "guru/layout_guru.html" %} {# Asumsi Anda punya layout_guru.html #}
+
+{% block title %}Kelola Peserta: {{ ekskul_info.nama_ekskul }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Kelola Peserta: {{ ekskul_info.nama_ekskul }}</h1>
+        <a href="{{ url_for('dashboard_guru') }}" class="btn btn-secondary">Kembali ke Dashboard</a>
+    </div>
+    <p><strong>Tahun Ajaran:</strong> {{ tahun_ajaran_aktif }}</p>
+    <p><strong>Pembina:</strong> {{ ekskul_info.nama_guru_pembina if ekskul_info.nama_guru_pembina else session.get('nama_lengkap') }}</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card mt-4">
+        <div class="card-header">
+            Daftarkan Murid Baru ke Ekskul Ini
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('add_peserta_ekskul_guru', ekskul_id=ekskul_info.id_ekskul) }}">
+                <input type="hidden" name="tahun_ajaran" value="{{ tahun_ajaran_aktif }}">
+                <div class="row">
+                    <div class="col-md-8 mb-2">
+                        <label for="id_murid" class="form-label">Pilih Murid</label>
+                        <select class="form-select" id="id_murid" name="id_murid" required>
+                            <option value="">-- Pilih Murid untuk Didaftarkan --</option>
+                            {% for student in available_students %}
+                                <option value="{{ student.id_pengguna }}">{{ student.nama_lengkap }} (NIS: {{ student.nomor_induk if student.nomor_induk else '-' }})</option>
+                            {% else %}
+                                <option value="" disabled>Semua murid aktif sudah terdaftar atau tidak ada murid lain.</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Hanya menampilkan murid aktif yang belum terdaftar di ekskul ini pada tahun ajaran ini.</small>
+                    </div>
+                    <div class="col-md-4 mb-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100">Daftarkan Murid</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <h2 class="mt-5">Daftar Peserta Terdaftar (Status: Disetujui/Terdaftar)</h2>
+    {% if members %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>Nama Murid</th>
+                    <th>NIS</th>
+                    <th>Status Pendaftaran</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in members %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ member.nama_lengkap }}</td>
+                    <td>{{ member.nomor_induk if member.nomor_induk else '-' }}</td>
+                    <td><span class="badge 
+                        {% if member.status_pendaftaran == 'Disetujui' %}bg-success
+                        {% elif member.status_pendaftaran == 'Terdaftar' %}bg-primary
+                        {% else %}bg-secondary{% endif %}">
+                        {{ member.status_pendaftaran }}
+                        </span>
+                    </td>
+                    <td>
+                        <form action="{{ url_for('remove_peserta_ekskul_guru', pendaftaran_id=member.id_pendaftaran_ekskul) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin mengeluarkan {{ member.nama_lengkap }} dari ekskul ini? Statusnya akan diubah menjadi \'Berhenti\'.');">
+                            <input type="hidden" name="ekskul_id_redirect" value="{{ ekskul_info.id_ekskul }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Keluarkan</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>Belum ada peserta terdaftar di ekstrakurikuler ini.</p>
+    {% endif %}
+</div>
+{% endblock %}

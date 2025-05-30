@@ -1,0 +1,56 @@
+{% extends "admin/layout_admin.html" %}
+
+{% block title %}{{ action }} Ekstrakurikuler{% endblock %}
+
+{% block content %}
+    <h1>{{ action }} Ekstrakurikuler</h1>
+    <form method="POST" action="{{ url_for('edit_ekskul_admin', ekskul_id=ekskul_data.id_ekskul) if action == 'Edit' else url_for('add_ekskul_admin') }}">
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="status_aktif" name="status_aktif" value="1" {% if ekskul_data and ekskul_data.status_aktif %}checked{% endif %}>
+            <label class="form-check-label" for="status_aktif">Aktif</label>
+        </div>
+        <div class="mb-3">
+            <label for="nama_ekskul" class="form-label">Nama Ekstrakurikuler</label>
+            <input type="text" class="form-control" id="nama_ekskul" name="nama_ekskul" value="{{ ekskul_data.nama_ekskul if ekskul_data else '' }}" required>
+        </div>
+         <div class="mb-3">
+            <label for="id_guru_pembina" class="form-label">Guru Pembina</label>
+            <select class="form-select" id="id_guru_pembina" name="id_guru_pembina">
+                <option value="">-- Pilih Guru Pembina --</option>
+                {% for guru in list_guru %}
+                <option value="{{ guru.id_pengguna }}" {% if ekskul_data and ekskul_data.id_guru_pembina == guru.id_pengguna %}selected{% endif %}>{{ guru.nama_lengkap }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="lokasi" class="form-label">Lokasi</label>
+            <input type="text" class="form-control" id="lokasi" name="lokasi" value="{{ ekskul_data.lokasi if ekskul_data else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="jadwal_deskripsi" class="form-label">Jadwal Deskripsi (Contoh: Setiap Sabtu, 09:00-11:00)</label>
+            <input type="text" class="form-control" id="jadwal_deskripsi" name="jadwal_deskripsi" value="{{ ekskul_data.jadwal_deskripsi if ekskul_data else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="deskripsi" class="form-label">Deskripsi Ekskul</label>
+            <textarea class="form-control" id="deskripsi" name="deskripsi" rows="4">{{ ekskul_data.deskripsi if ekskul_data and ekskul_data.deskripsi is not none else '' }}</textarea>
+            <small class="form-text text-muted">Jelaskan tentang kegiatan ekstrakurikuler ini.</small>
+        </div>
+        <div class="mb-3">
+            <label for="kategori" class="form-label">Kategori Ekskul</label>
+            <select class="form-select" id="kategori" name="kategori">
+                <option value="">-- Pilih Kategori --</option>
+                <option value="Olahraga" {% if ekskul_data and ekskul_data.kategori == 'Olahraga' %}selected{% endif %}>Olahraga</option>
+                <option value="Seni" {% if ekskul_data and ekskul_data.kategori == 'Seni' %}selected{% endif %}>Seni</option>
+                <option value="Akademik" {% if ekskul_data and ekskul_data.kategori == 'Akademik' %}selected{% endif %}>Akademik</option>
+                <option value="Keagamaan" {% if ekskul_data and ekskul_data.kategori == 'Keagamaan' %}selected{% endif %}>Keagamaan</option>
+                <option value="Teknologi" {% if ekskul_data and ekskul_data.kategori == 'Teknologi' %}selected{% endif %}>Sains & Teknologi</option>
+                <option value="Bahasa" {% if ekskul_data and ekskul_data.kategori == 'Bahasa' %}selected{% endif %}>Bahasa</option>
+                <option value="Lainnya" {% if ekskul_data and ekskul_data.kategori == 'Lainnya' %}selected{% endif %}>Lainnya</option>
+                {# Jika kategori disimpan di database (tabel KategoriEkskul terpisah), Anda bisa mengisi opsi ini secara dinamis #}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">{{ action }} Ekstrakurikuler</button>
+        <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Batal</a>
+    </form>
+{% endblock %}

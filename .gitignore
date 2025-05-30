@@ -1,0 +1,26 @@
+# Python virtual environment
+venv/
+.venv/
+ENV/
+env/
+*.pyenv
+
+# Python bytecode dan cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# File konfigurasi sensitif atau lokal
+.env
+instance/  # Folder instance Flask jika berisi file rahasia
+config.local.py 
+
+# Database lokal (jika menggunakan SQLite untuk pengembangan dan tidak ingin dibagikan)
+*.sqlite3
+*.db
+
+# IDE & Editor specific files
+.idea/
+.vscode/
+*.DS_Store

@@ -1,0 +1,26 @@
+{% extends "admin/layout_admin.html" %}
+
+{% block title %}Daftarkan Murid ke Kelas: {{ kelas_info.nama_kelas }}{% endblock %}
+
+{% block content %}
+    <h1>Daftarkan Murid ke Kelas: {{ kelas_info.nama_kelas }}</h1>
+    <p>Tahun Ajaran: {{ kelas_info.tahun_ajaran }}</p>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="id_murid" class="form-label">Pilih Murid <span class="text-danger">*</span></label>
+            <select class="form-select" id="id_murid" name="id_murid" required>
+                <option value="">-- Pilih Murid --</option>
+                {% for student in available_students %}
+                    <option value="{{ student.id_pengguna }}">{{ student.nama_lengkap }} (NIS: {{ student.nomor_induk if student.nomor_induk else '-' }})</option>
+                {% else %}
+                    <option value="" disabled>Tidak ada murid yang bisa didaftarkan saat ini.</option>
+                {% endfor %}
+            </select>
+            <small class="form-text text-muted">Hanya menampilkan murid aktif yang belum terdaftar di kelas ini pada tahun ajaran ini.</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Daftarkan Murid</button>
+        <a href="{{ url_for('kelas_detail_admin', kelas_id=kelas_info.id_kelas) }}" class="btn btn-secondary">Batal</a>
+    </form>
+{% endblock %}

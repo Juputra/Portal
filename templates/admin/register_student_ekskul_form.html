@@ -1,0 +1,30 @@
+{% extends "admin/layout_admin.html" %}
+
+{% block title %}Daftarkan Murid ke Ekskul: {{ ekskul_info.nama_ekskul }}{% endblock %}
+
+{% block content %}
+    <h1>Daftarkan Murid ke Ekskul: {{ ekskul_info.nama_ekskul }}</h1>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="id_murid" class="form-label">Pilih Murid <span class="text-danger">*</span></label>
+            <select class="form-select" id="id_murid" name="id_murid" required>
+                <option value="">-- Pilih Murid --</option>
+                {% for student in available_students %}
+                    <option value="{{ student.id_pengguna }}">{{ student.nama_lengkap }} (NIS: {{ student.nomor_induk if student.nomor_induk else '-' }})</option>
+                {% else %}
+                    <option value="" disabled>Tidak ada murid yang bisa didaftarkan saat ini.</option>
+                {% endfor %}
+            </select>
+            <small class="form-text text-muted">Hanya menampilkan murid aktif yang belum terdaftar di ekskul ini pada tahun ajaran yang dipilih.</small>
+        </div>
+
+        <div class="mb-3">
+            <label for="tahun_ajaran" class="form-label">Tahun Ajaran Pendaftaran <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="tahun_ajaran" name="tahun_ajaran" value="{{ current_tahun_ajaran }}" placeholder="Contoh: 2024/2025" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Daftarkan Murid</button>
+        <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Batal</a>
+    </form>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "admin/layout_admin.html" %}
+
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block content %}
+    <h1>Selamat Datang di Dashboard Admin</h1>
+    <p>Ini adalah halaman utama untuk administrasi portal.</p>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-bg-primary mb-3">
+                <div class="card-header">Total Pengguna</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ jumlah_pengguna }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-bg-success mb-3">
+                <div class="card-header">Total Kelas</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ jumlah_kelas }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+             <div class="card text-bg-info mb-3">
+                <div class="card-header">Total Ekskul</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ jumlah_ekskul }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr>
+    <h4>Aksi Cepat:</h4>
+    <a href="{{ url_for('users_admin') }}" class="btn btn-secondary">Kelola Pengguna</a>
+    <a href="{{ url_for('kelas_admin') }}" class="btn btn-secondary">Kelola Kelas</a>
+    <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Kelola Ekstrakurikuler</a>
+{% endblock %}
