@@ -630,7 +630,7 @@ class Config:
         # Implementasi: SELECT COUNT(*) FROM Pengguna; SELECT COUNT(*) FROM Kelas; dst.
         # Ini adalah contoh sederhana, Anda bisa membuatnya lebih efisien
         conn = self._get_connection()
-        counts = {'users': 0, 'kelas': 0, 'ekskul': 0}
+        counts = {'users': 0, 'kelas': 0, 'ekskul': 0, 'pengumuman':0}
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) as total FROM Pengguna")
@@ -639,6 +639,8 @@ class Config:
                 counts['kelas'] = cursor.fetchone()['total']
                 cursor.execute("SELECT COUNT(*) as total FROM Ekstrakurikuler")
                 counts['ekskul'] = cursor.fetchone()['total']
+                cursor.execute("SELECT COUNT(*) as total FROM Pengumuman") # Query untuk hitung pengumuman
+                counts['pengumuman'] = cursor.fetchone()['total']
         except pymysql.MySQLError as e:
             print(f"Error getting counts: {e}")
         finally:

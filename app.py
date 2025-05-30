@@ -122,7 +122,8 @@ class Portal:
             return render_template('admin/dashboard_admin.html', 
                                    jumlah_pengguna=counts.get('users',0), 
                                    jumlah_kelas=counts.get('kelas',0), 
-                                   jumlah_ekskul=counts.get('ekskul',0))
+                                   jumlah_ekskul=counts.get('ekskul',0)), 
+                                   jumlah_pengumuman=counts.get('pengumuman',0)
 
         # --- Manajemen Pengguna (Admin) ---
         @self.app.route('/admin/users')

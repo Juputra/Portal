@@ -40,6 +40,10 @@
                     <li class="nav-item">
                         <a class="btn btn-outline-danger" href="{{ url_for('logout') }}">Logout</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint.startswith('pengumuman_admin') or request.endpoint == 'tambah_pengumuman_admin' %}active{% endif %}" 
+                        href="{{ url_for('pengumuman_admin') }}">Pengumuman</a>
+                    </li>
                 </ul>
                 {% endif %}
             </div>
