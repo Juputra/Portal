@@ -6,8 +6,30 @@
     <h1>Selamat Datang di Dashboard Admin</h1>
     <p>Ini adalah halaman utama untuk administrasi portal.</p>
     <div class="row">
-        {# ... kartu untuk pengguna, kelas, ekskul ... #}
-        {# Kartu untuk Pengumuman (opsional jika Anda menambahkannya di sini) #}
+        <div class="col-md-4">
+            <div class="card text-bg-primary mb-3">
+                <div class="card-header">Total Pengguna</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ jumlah_pengguna }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-bg-success mb-3">
+                <div class="card-header">Total Kelas</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ jumlah_kelas }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+             <div class="card text-bg-info mb-3">
+                <div class="card-header">Total Ekskul</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ jumlah_ekskul }}</h5>
+                </div>
+            </div>
+        </div>
         <div class="col-md-3"> {# Sesuaikan ukuran kolom jika perlu #}
             <div class="card text-bg-warning mb-3"> {# Ganti warna jika mau #}
                 <div class="card-header">Total Pengumuman</div>
@@ -20,10 +42,8 @@
     </div>
     <hr>
     <h4>Aksi Cepat:</h4>
-    <a href="{{ url_for('users_admin') }}" class="btn btn-secondary mb-2">Kelola Pengguna</a>
-    <a href="{{ url_for('kelas_admin') }}" class="btn btn-secondary mb-2">Kelola Kelas</a>
-    <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary mb-2">Kelola Ekstrakurikuler</a>
-    {# TOMBOL BARU UNTUK PENGUMUMAN #}
-    <a href="{{ url_for('pengumuman_admin') }}" class="btn btn-info mb-2">Kelola Pengumuman</a> 
-    {# Anda juga bisa menggunakan class btn-secondary agar seragam #}
+    <a href="{{ url_for('users_admin') }}" class="btn btn-secondary">Kelola Pengguna</a>
+    <a href="{{ url_for('kelas_admin') }}" class="btn btn-secondary">Kelola Kelas</a>
+    <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Kelola Ekstrakurikuler</a>
+    <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Kelola Pengumuman</a>
 {% endblock %}
