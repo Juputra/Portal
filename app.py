@@ -423,6 +423,58 @@ class Portal:
 
             return render_template('admin/user_form_admin.html', action='Edit', user_data=user_to_edit)
 
+        # --- Manajemen Pengumuman (Admin) ---
+        @self.app.route('/admin/pengumuman')
+        @self.admin_login_required
+        def pengumuman_admin():
+            # Ambil semua pengumuman untuk ditampilkan
+            list_pengumuman = self.con.get_all_pengumuman()
+            return render_template('admin/pengumuman_admin.html', list_pengumuman=list_pengumuman)
+
+        @self.app.route('/admin/pengumuman/tambah', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def tambah_pengumuman_admin():
+            if request.method == 'POST':
+                judul = request.form.get('judul_pengumuman','').strip()
+                isi = request.form.get('isi_pengumuman','').strip()
+                target_peran = request.form.get('target_peran') 
+                # Ambil target_kelas_id dan target_ekskul_id, pastikan integer atau None
+                target_kelas_id_str = request.form.get('target_kelas_id')
+                target_kelas_id = int(target_kelas_id_str) if target_kelas_id_str and target_kelas_id_str.isdigit() else None
+                
+                target_ekskul_id_str = request.form.get('target_ekskul_id')
+                target_ekskul_id = int(target_ekskul_id_str) if target_ekskul_id_str and target_ekskul_id_str.isdigit() else None
+
+                if not judul or not isi:
+                    flash("Judul dan Isi pengumuman wajib diisi.", "danger")
+                else:
+                    data_pengumuman = {
+                        'judul_pengumuman': judul,
+                        'isi_pengumuman': isi,
+                        'id_pembuat': session['user_id'], # ID admin yang login
+                        'target_peran': target_peran if target_peran else None, # Jika "" jadikan None
+                        'target_kelas_id': target_kelas_id,
+                        'target_ekskul_id': target_ekskul_id
+                    }
+                    pengumuman_id = self.con.add_pengumuman(data_pengumuman)
+                    if pengumuman_id:
+                        flash("Pengumuman berhasil ditambahkan!", "success")
+                        return redirect(url_for('pengumuman_admin'))
+                    else:
+                        flash("Gagal menambahkan pengumuman. Periksa log server.", "danger")
+            
+            # Ambil data untuk dropdown target (opsional, tapi bagus untuk UX)
+            # Jika target_peran adalah 'semua', maka tidak perlu pilih kelas/ekskul
+            # Jika target_peran adalah 'murid' atau 'guru', bisa jadi ada filter per kelas/ekskul
+            list_kelas = self.con.get_all_kelas() # Asumsi metode ini sudah ada
+            list_ekskul = self.con.get_all_ekskul() # Asumsi metode ini sudah ada
+            
+            return render_template('admin/pengumuman_form_admin.html', 
+                                   action="Tambah", 
+                                   pengumuman_data=None,
+                                   list_kelas=list_kelas,
+                                   list_ekskul=list_ekskul)
+
         # --- Hapus Pengguna (Admin) ---
         @self.app.route('/admin/users/delete/<int:user_id>', methods=['POST']) # Gunakan POST untuk aksi hapus
         @self.admin_login_required

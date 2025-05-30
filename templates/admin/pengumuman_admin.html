@@ -1,0 +1,50 @@
+{% extends "admin/layout_admin.html" %}
+
+{% block title %}Manajemen Pengumuman{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Daftar Pengumuman</h1>
+        <a href="{{ url_for('tambah_pengumuman_admin') }}" class="btn btn-primary">Tambah Pengumuman Baru</a>
+    </div>
+
+    {% if list_pengumuman %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Judul</th>
+                    <th>Isi Singkat</th>
+                    <th>Tanggal Publikasi</th>
+                    <th>Pembuat</th>
+                    <th>Target Peran</th>
+                    <th>Target Kelas</th>
+                    <th>Target Ekskul</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in list_pengumuman %}
+                <tr>
+                    <td>{{ p.judul_pengumuman }}</td>
+                    <td>{{ p.isi_pengumuman|truncate(100, true) }}</td> {# Tampilkan 100 karakter pertama #}
+                    <td>{{ p.tanggal_publikasi.strftime('%d-%m-%Y %H:%M') if p.tanggal_publikasi else '-' }}</td>
+                    <td>{{ p.nama_pembuat if p.nama_pembuat else '-' }}</td>
+                    <td>{{ p.target_peran|capitalize if p.target_peran else 'Semua' }}</td>
+                    <td>{{ p.nama_target_kelas if p.nama_target_kelas else '-' }}</td>
+                    <td>{{ p.nama_target_ekskul if p.nama_target_ekskul else '-' }}</td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-outline-warning">Edit</a> {# TODO: Link ke edit_pengumuman_admin #}
+                        <form action="#" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus pengumuman ini?');"> {# TODO: Link ke delete_pengumuman_admin #}
+                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1">Hapus</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center">Belum ada pengumuman.</p>
+    {% endif %}
+{% endblock %}

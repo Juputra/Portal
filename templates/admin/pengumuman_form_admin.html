@@ -1,0 +1,55 @@
+{% extends "admin/layout_admin.html" %}
+
+{% block title %}{{ action }} Pengumuman{% endblock %}
+
+{% block content %}
+    <h1>{{ action }} Pengumuman</h1>
+    <form method="POST"> {# Action form akan otomatis ke rute saat ini jika tidak diset #}
+        <div class="mb-3">
+            <label for="judul_pengumuman" class="form-label">Judul <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="judul_pengumuman" name="judul_pengumuman" 
+                   value="{{ pengumuman_data.judul_pengumuman if pengumuman_data else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="isi_pengumuman" class="form-label">Isi Pengumuman <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="isi_pengumuman" name="isi_pengumuman" rows="5" required>{{ pengumuman_data.isi_pengumuman if pengumuman_data else '' }}</textarea>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="target_peran" class="form-label">Target Peran</label>
+                <select class="form-select" id="target_peran" name="target_peran">
+                    <option value="" {% if pengumuman_data and not pengumuman_data.target_peran %}selected{% endif %}>Semua Peran</option>
+                    <option value="admin" {% if pengumuman_data and pengumuman_data.target_peran == 'admin' %}selected{% endif %}>Admin</option>
+                    <option value="guru" {% if pengumuman_data and pengumuman_data.target_peran == 'guru' %}selected{% endif %}>Guru</option>
+                    <option value="murid" {% if pengumuman_data and pengumuman_data.target_peran == 'murid' %}selected{% endif %}>Murid</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="target_kelas_id" class="form-label">Target Kelas (Opsional)</label>
+                <select class="form-select" id="target_kelas_id" name="target_kelas_id">
+                    <option value="">-- Tidak Spesifik Kelas --</option>
+                    {% for kelas_item in list_kelas %}
+                    <option value="{{ kelas_item.id_kelas }}" {% if pengumuman_data and pengumuman_data.target_kelas_id == kelas_item.id_kelas %}selected{% endif %}>
+                        {{ kelas_item.nama_kelas }} ({{ kelas_item.tahun_ajaran }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="target_ekskul_id" class="form-label">Target Ekskul (Opsional)</label>
+                <select class="form-select" id="target_ekskul_id" name="target_ekskul_id">
+                    <option value="">-- Tidak Spesifik Ekskul --</option>
+                    {% for ekskul_item in list_ekskul %}
+                    <option value="{{ ekskul_item.id_ekskul }}" {% if pengumuman_data and pengumuman_data.target_ekskul_id == ekskul_item.id_ekskul %}selected{% endif %}>
+                        {{ ekskul_item.nama_ekskul }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <p><small class="text-muted">Jika Target Peran, Kelas, dan Ekskul tidak dipilih, pengumuman akan berlaku untuk semua pengguna.</small></p>
+
+        <button type="submit" class="btn btn-primary">{{ action }} Pengumuman</button>
+        <a href="{{ url_for('pengumuman_admin') }}" class="btn btn-secondary">Batal</a>
+    </form>
+{% endblock %}

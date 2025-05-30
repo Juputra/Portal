@@ -348,6 +348,63 @@ class Config:
             if conn.open: conn.close()
         return ekskul_list
 
+    def add_pengumuman(self, data_pengumuman):
+        # data_pengumuman adalah dictionary: 
+        # {'judul_pengumuman': '...', 'isi_pengumuman': '...', 'id_pembuat': ..., 
+        #  'target_ekskul_id': ..., 'target_kelas_id': ..., 'target_peran': ...}
+        conn = self._get_connection()
+        new_id = None
+        try:
+            with conn.cursor() as cursor:
+                sql = """INSERT INTO Pengumuman 
+                         (judul_pengumuman, isi_pengumuman, id_pembuat, 
+                          target_ekskul_id, target_kelas_id, target_peran)
+                         VALUES (%s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (
+                    data_pengumuman['judul_pengumuman'],
+                    data_pengumuman['isi_pengumuman'],
+                    data_pengumuman['id_pembuat'],
+                    data_pengumuman.get('target_ekskul_id'), # Bisa None
+                    data_pengumuman.get('target_kelas_id'),  # Bisa None
+                    data_pengumuman.get('target_peran')      # Bisa None
+                ))
+                conn.commit()
+                new_id = cursor.lastrowid
+        except pymysql.MySQLError as e:
+            print(f"Error in add_pengumuman: {e}")
+            conn.rollback()
+        finally:
+            if conn.open: conn.close()
+        return new_id
+
+    def get_all_pengumuman(self):
+        # Mengambil semua pengumuman, mungkin diurutkan berdasarkan tanggal terbaru
+        # dan join dengan nama pembuat, nama kelas, nama ekskul untuk tampilan
+        conn = self._get_connection()
+        pengumuman_list = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT 
+                        pnm.id_pengumuman, pnm.judul_pengumuman, pnm.isi_pengumuman, 
+                        pnm.tanggal_publikasi, pnm.target_peran,
+                        usr.nama_lengkap AS nama_pembuat,
+                        kls.nama_kelas AS nama_target_kelas,
+                        eks.nama_ekskul AS nama_target_ekskul
+                    FROM Pengumuman pnm
+                    JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna
+                    LEFT JOIN Kelas kls ON pnm.target_kelas_id = kls.id_kelas
+                    LEFT JOIN Ekstrakurikuler eks ON pnm.target_ekskul_id = eks.id_ekskul
+                    ORDER BY pnm.tanggal_publikasi DESC
+                """
+                cursor.execute(sql)
+                pengumuman_list = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error in get_all_pengumuman: {e}")
+        finally:
+            if conn.open: conn.close()
+        return pengumuman_list
+
     def add_ekskul(self, ekskul_data):
         conn = self._get_connection()
         new_ekskul_id = None
