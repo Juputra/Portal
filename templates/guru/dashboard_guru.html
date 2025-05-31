@@ -71,11 +71,6 @@
 <div class="tab-content" id="guruTabContent">
     <div class="tab-pane fade show active" id="info-content" role="tabpanel" aria-labelledby="info-tab">
         <section class="container-custom">
-            <h2>Informasi Terbaru</h2>
-            <p>--- DEBUG TEMPLATE ---</p>
-            <p>Variabel info_terbaru mentah: {{ info_terbaru }}</p>
-            <p>Jumlah item di info_terbaru: {{ info_terbaru|length }}</p>
-            <p>--- AKHIR DEBUG TEMPLATE ---</p>
             {% if info_terbaru %}
                 <ul class="list-group list-group-flush">
                 {% for pengumuman in info_terbaru %}
