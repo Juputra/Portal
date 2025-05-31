@@ -593,8 +593,9 @@ class Portal:
                                    list_kelas=list_kelas,
                                    list_ekskul=list_ekskul)
 
+    # === Guru Route
 
-    # --- Rute Dashboard Guru (Diperbarui) ---
+    # --- Rute Dashboard Guru ---
         @self.app.route('/guru/dashboard')
         @self.guru_login_required
         def dashboard_guru():
@@ -625,7 +626,6 @@ class Portal:
                                    ekskul_guru=jadwal_ekskul_guru, # Untuk dropdown ekskul di form absen
                                    tahun_ajaran_aktif=tahun_ajaran_aktif,
                                    default_tanggal_absen=date.today().isoformat())
-
 
         # --- Rute untuk Submit Absen Guru (BARU) ---
         @self.app.route('/guru/absen/submit', methods=['POST'])
