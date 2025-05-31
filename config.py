@@ -711,36 +711,45 @@ class Config:
         return materi
 
     def update_materi_ekskul(self, id_materi_ekskul, data_materi):
-        # data_materi: {'id_ekskul': ..., 'judul_materi': ..., 'deskripsi_materi': ..., 
-        #               'tipe_konten': ..., 'path_konten_atau_link': ..., 
-        #               'isi_konten_teks': ... , 'id_pengunggah': ... (opsional, mungkin tidak diupdate)}
-        # Perhatikan: id_pengunggah biasanya tidak diubah saat edit.
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
                 sql_parts = []
                 params = []
 
-                if 'id_ekskul' in data_materi: sql_parts.append("id_ekskul = %s"); params.append(data_materi['id_ekskul'])
-                if 'judul_materi' in data_materi: sql_parts.append("judul_materi = %s"); params.append(data_materi['judul_materi'])
-                if 'deskripsi_materi' in data_materi: sql_parts.append("deskripsi_materi = %s"); params.append(data_materi.get('deskripsi_materi'))
-                if 'tipe_konten' in data_materi: sql_parts.append("tipe_konten = %s"); params.append(data_materi['tipe_konten'])
+                # Selalu update field dasar jika ada di data_materi
+                if 'id_ekskul' in data_materi: 
+                    sql_parts.append("id_ekskul = %s")
+                    params.append(data_materi['id_ekskul'])
+                if 'judul_materi' in data_materi: 
+                    sql_parts.append("judul_materi = %s")
+                    params.append(data_materi['judul_materi'])
+                if 'deskripsi_materi' in data_materi: # deskripsi bisa string kosong
+                    sql_parts.append("deskripsi_materi = %s")
+                    params.append(data_materi['deskripsi_materi'])
                 
-                # Logika untuk path_konten_atau_link dan isi_konten_teks berdasarkan tipe_konten
+                # Update tipe_konten jika berubah
                 if 'tipe_konten' in data_materi:
-                    if data_materi['tipe_konten'] in ['file', 'link', 'video_embed']:
-                        if 'path_konten_atau_link' in data_materi: # Hanya update jika ada path baru
+                    current_tipe_konten = data_materi['tipe_konten']
+                    sql_parts.append("tipe_konten = %s")
+                    params.append(current_tipe_konten)
+
+                    if current_tipe_konten in ['file', 'link', 'video_embed']:
+                        # Jika path_konten_atau_link ada di data_materi (artinya ada file baru atau link baru)
+                        # atau jika memang field ini dikirim kosong untuk mengosongkan
+                        if 'path_konten_atau_link' in data_materi:
                             sql_parts.append("path_konten_atau_link = %s")
                             params.append(data_materi.get('path_konten_atau_link'))
-                            sql_parts.append("isi_konten_teks = NULL") # Kosongkan field teks jika tipe file/link
-                            params.append(None) # Untuk placeholder query jika ada
-                    elif data_materi['tipe_konten'] == 'teks':
-                        if 'isi_konten_teks' in data_materi: # Hanya update jika ada teks baru
+                        sql_parts.append("isi_konten_teks = %s") # Selalu set pasangannya jadi NULL
+                        params.append(None)
+                    elif current_tipe_konten == 'teks':
+                        if 'isi_konten_teks' in data_materi:
                             sql_parts.append("isi_konten_teks = %s")
                             params.append(data_materi.get('isi_konten_teks'))
-                            sql_parts.append("path_konten_atau_link = NULL") # Kosongkan field path/link jika tipe teks
-                            params.append(None) # Untuk placeholder query jika ada
-                else: # Jika tipe konten tidak berubah, tapi path atau isi berubah
+                        sql_parts.append("path_konten_atau_link = %s") # Selalu set pasangannya jadi NULL
+                        params.append(None)
+                else:
+                    # Tipe konten tidak diubah, hanya update path atau teks jika ada
                     if 'path_konten_atau_link' in data_materi:
                         sql_parts.append("path_konten_atau_link = %s")
                         params.append(data_materi.get('path_konten_atau_link'))
@@ -750,19 +759,33 @@ class Config:
 
 
                 if not sql_parts:
-                    return True # Tidak ada yang diupdate
+                    print("Tidak ada data valid untuk diupdate pada materi ekskul.")
+                    return True # Anggap sukses jika tidak ada yang diubah
 
-                # Selalu tambahkan updated_at
                 sql_parts.append("updated_at = NOW()")
                 
-                sql = f"UPDATE MateriEkskul SET {', '.join(sql_parts)} WHERE id_materi_ekskul = %s"
+                sql_query = f"UPDATE MateriEkskul SET {', '.join(sql_parts)} WHERE id_materi_ekskul = %s"
                 params.append(id_materi_ekskul)
                 
-                cursor.execute(sql, tuple(params))
+                # DEBUGGING:
+                print("--- DEBUG update_materi_ekskul ---")
+                print("SQL Query:", sql_query)
+                print("Params:", tuple(params))
+                print("Jumlah %s di SQL:", sql_query.count('%s'))
+                print("Jumlah item di params:", len(params))
+                #------------------------------------
+
+                if sql_query.count('%s') != len(params):
+                    print("ERROR KRITIS: Jumlah placeholder %s tidak cocok dengan jumlah parameter!")
+                    # Jangan eksekusi query jika tidak cocok
+                    conn.rollback() # Pastikan tidak ada perubahan parsial
+                    return False
+
+                cursor.execute(sql_query, tuple(params))
                 conn.commit()
                 return True
         except pymysql.MySQLError as e:
-            print(f"Error in update_materi_ekskul: {e}")
+            print(f"Error in update_materi_ekskul for ID {id_materi_ekskul}: {e}")
             conn.rollback()
             return False
         finally:

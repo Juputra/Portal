@@ -644,6 +644,8 @@ class Portal:
                                    action="Tambah", 
                                    materi_data=request.form if request.method == 'POST' else None, # Kirim data form kembali jika ada error
                                    list_ekskul=list_ekskul)
+        @self.app.route('/admin/materi_ekskul/edit/<int:id_materi_ekskul>', methods=['GET', 'POST'])
+        @self.admin_login_required
         def edit_materi_ekskul_admin(id_materi_ekskul):
             materi_data_lama = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
             if not materi_data_lama:
