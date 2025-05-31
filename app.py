@@ -963,6 +963,124 @@ class Portal:
             else:
                 flash(f"Gagal menghapus pengumuman '{judul_pengumuman}'.", "danger")
             return redirect(url_for('pengumuman_admin'))
+    
+    # --- Manajemen Absensi Ekskul oleh Admin ---
+        @self.app.route('/admin/absensi_ekskul')
+        @self.admin_login_required
+        def list_absensi_ekskul_admin():
+            # Tambahkan filter jika perlu dari request.args
+            # Untuk contoh, kita ambil semua
+            absensi_list = self.con.get_all_absensi_ekskul_detailed()
+            return render_template('admin/absensi_ekskul_list.html', absensi_list=absensi_list)
+
+        @self.app.route('/admin/absensi_ekskul/manage', methods=['GET', 'POST']) # Untuk tambah baru
+        @self.app.route('/admin/absensi_ekskul/manage/<int:id_pendaftaran_ekskul>/<tanggal_kegiatan_str>', methods=['GET', 'POST']) # Untuk edit
+        @self.admin_login_required
+        def manage_absensi_ekskul_admin(id_pendaftaran_ekskul=None, tanggal_kegiatan_str=None):
+            action = "Edit" if id_pendaftaran_ekskul and tanggal_kegiatan_str else "Tambah"
+            absensi_data = None
+            selected_murid_id = None
+            selected_ekskul_id = None
+            selected_tahun_ajaran = None
+
+            if action == "Edit":
+                try:
+                    # Konversi tanggal_kegiatan_str ke objek date jika perlu
+                    # Format YYYY-MM-DD dari URL atau string lain perlu diparsing
+                    # tanggal_obj = datetime.strptime(tanggal_kegiatan_str, '%Y-%m-%d').date() # Contoh
+                    # Untuk sementara, kita asumsikan tanggal_kegiatan_str sudah format YYYY-MM-DD
+                    absensi_data = self.con.get_absensi_entry_for_edit(id_pendaftaran_ekskul, tanggal_kegiatan_str)
+                    if absensi_data:
+                        selected_murid_id = absensi_data['id_murid']
+                        selected_ekskul_id = absensi_data['id_ekskul']
+                        selected_tahun_ajaran = absensi_data['tahun_ajaran']
+                    else:
+                        flash("Data absensi yang akan diedit tidak ditemukan.", "warning")
+                        return redirect(url_for('list_absensi_ekskul_admin'))
+                except ValueError:
+                    flash("Format tanggal untuk edit tidak valid.", "danger")
+                    return redirect(url_for('list_absensi_ekskul_admin'))
+
+
+            if request.method == 'POST':
+                admin_id = session['user_id']
+                murid_id = int(request.form.get('id_murid'))
+                ekskul_id = int(request.form.get('id_ekskul'))
+                status_kehadiran = request.form.get('status_kehadiran')
+                tanggal_kegiatan_form = request.form.get('tanggal_kegiatan')
+                # Tahun ajaran bisa diambil dari form atau dari pendaftaran jika sedang edit
+                tahun_ajaran_form = request.form.get('tahun_ajaran_pendaftaran', selected_tahun_ajaran if selected_tahun_ajaran else (self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025"))
+                catatan = request.form.get('catatan_absen', '')
+                jam_kegiatan = request.form.get('jam_kegiatan') or None
+
+                if not all([murid_id, ekskul_id, status_kehadiran, tanggal_kegiatan_form, tahun_ajaran_form]):
+                    flash("Data absen tidak lengkap. Semua field bertanda (*) wajib diisi.", 'danger')
+                else:
+                    # Dapatkan id_pendaftaran_ekskul yang benar
+                    # Jika sedang edit, id_pendaftaran_ekskul sudah ada. Jika tambah, cari.
+                    current_id_pendaftaran = id_pendaftaran_ekskul # Dari parameter URL jika edit
+                    if not current_id_pendaftaran: # Jika tambah baru
+                         current_id_pendaftaran = self.con.get_pendaftaran_ekskul_id(murid_id, ekskul_id, tahun_ajaran_form)
+                    
+                    if current_id_pendaftaran:
+                        if self.con.save_absensi_ekskul(current_id_pendaftaran, tanggal_kegiatan_form, status_kehadiran, admin_id, catatan, jam_kegiatan):
+                            flash(f"Data absensi untuk tanggal {tanggal_kegiatan_form} berhasil di{action.lower()}kan.", "success")
+                            return redirect(url_for('list_absensi_ekskul_admin'))
+                        else:
+                            flash("Gagal menyimpan data absensi. Terjadi kesalahan.", "danger")
+                    else:
+                        flash(f"Murid tidak terdaftar di ekstrakurikuler tersebut pada tahun ajaran {tahun_ajaran_form} atau pendaftaran tidak aktif.", "warning")
+                
+                # Jika gagal, isi kembali form dengan data yang sudah diinput
+                absensi_data_from_form = dict(request.form)
+                # Konversi id_murid dan id_ekskul dari form (string) ke int untuk pre-select
+                absensi_data_from_form['id_murid'] = int(absensi_data_from_form['id_murid']) if absensi_data_from_form.get('id_murid','').isdigit() else None
+                absensi_data_from_form['id_ekskul'] = int(absensi_data_from_form['id_ekskul']) if absensi_data_from_form.get('id_ekskul','').isdigit() else None
+                absensi_data_from_form['tanggal_kegiatan'] = tanggal_kegiatan_form # Untuk mempertahankan tanggal
+                absensi_data_from_form['tahun_ajaran'] = tahun_ajaran_form
+
+                # Untuk dropdown di GET request
+                all_ekskul = self.con.get_all_ekskul() 
+                all_murid = self.con.get_all_active_murid() if hasattr(self.con, 'get_all_active_murid') else self.con.get_users_by_role('murid')
+                return render_template('admin/absensi_ekskul_form_admin.html', 
+                                    action=action, 
+                                    absensi_data=absensi_data_from_form, # Kirim data form yang gagal
+                                    list_ekskul=all_ekskul, 
+                                    list_murid=all_murid,
+                                    default_tanggal_absen=tanggal_kegiatan_form,
+                                    default_tahun_ajaran=tahun_ajaran_form,
+                                    id_pendaftaran_ekskul_edit=id_pendaftaran_ekskul, # Untuk action form edit
+                                    tanggal_kegiatan_edit=tanggal_kegiatan_str # Untuk action form edit
+                                    )
+
+            # Untuk GET request
+            all_ekskul = self.con.get_all_ekskul() 
+            # Ambil semua murid aktif untuk pilihan admin
+            all_murid = self.con.get_all_active_murid() if hasattr(self.con, 'get_all_active_murid') else self.con.get_users_by_role('murid')
+            
+            default_tanggal = tanggal_kegiatan_str if tanggal_kegiatan_str else date.today().isoformat()
+            default_tahun_ajaran_val = selected_tahun_ajaran if selected_tahun_ajaran else (self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025")
+            
+            return render_template('admin/absensi_ekskul_form_admin.html', 
+                                   action=action, 
+                                   absensi_data=absensi_data, 
+                                   list_ekskul=all_ekskul, 
+                                   list_murid=all_murid,
+                                   default_tanggal_absen=default_tanggal,
+                                   default_tahun_ajaran=default_tahun_ajaran_val,
+                                   id_pendaftaran_ekskul_edit=id_pendaftaran_ekskul, # Untuk action form edit
+                                   tanggal_kegiatan_edit=tanggal_kegiatan_str # Untuk action form edit
+                                   )
+
+
+        @self.app.route('/admin/absensi_ekskul/hapus/<int:id_absensi_ekskul>', methods=['POST'])
+        @self.admin_login_required
+        def hapus_absensi_ekskul_admin(id_absensi_ekskul):
+            if self.con.delete_absensi_ekskul(id_absensi_ekskul):
+                flash("Entri absensi berhasil dihapus.", "success")
+            else:
+                flash("Gagal menghapus entri absensi.", "danger")
+            return redirect(url_for('list_absensi_ekskul_admin'))
 
     # === Guru Route ===
 

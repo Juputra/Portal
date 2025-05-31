@@ -916,6 +916,94 @@ class Config:
             return False
         finally:
             if conn.open: conn.close()
+    
+    def get_all_absensi_ekskul_detailed(self, tahun_ajaran_filter=None, ekskul_id_filter=None, murid_id_filter=None, date_filter=None):
+        """Mengambil semua data absensi dengan detail nama murid, ekskul, dan pencatat."""
+        conn = self._get_connection()
+        absensi_list = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT 
+                        a.id_absensi_ekskul, 
+                        p_murid.nama_lengkap AS nama_murid,
+                        e.nama_ekskul,
+                        a.tanggal_kegiatan,
+                        a.jam_mulai_kegiatan,
+                        a.status_kehadiran,
+                        a.catatan,
+                        p_pencatat.nama_lengkap AS nama_pencatat,
+                        a.tanggal_dicatat,
+                        pe.id_pendaftaran_ekskul, # Untuk link edit
+                        pe.tahun_ajaran
+                    FROM AbsensiEkskul a
+                    JOIN PendaftaranEkskul pe ON a.id_pendaftaran_ekskul = pe.id_pendaftaran_ekskul
+                    JOIN Pengguna p_murid ON pe.id_murid = p_murid.id_pengguna
+                    JOIN Ekstrakurikuler e ON pe.id_ekskul = e.id_ekskul
+                    LEFT JOIN Pengguna p_pencatat ON a.dicatat_oleh_id = p_pencatat.id_pengguna
+                    WHERE 1=1 
+                """
+                params = []
+                if tahun_ajaran_filter:
+                    sql += " AND pe.tahun_ajaran = %s"
+                    params.append(tahun_ajaran_filter)
+                if ekskul_id_filter:
+                    sql += " AND e.id_ekskul = %s"
+                    params.append(ekskul_id_filter)
+                if murid_id_filter:
+                    sql += " AND p_murid.id_pengguna = %s"
+                    params.append(murid_id_filter)
+                if date_filter:
+                    sql += " AND a.tanggal_kegiatan = %s"
+                    params.append(date_filter)
+                
+                sql += " ORDER BY a.tanggal_kegiatan DESC, e.nama_ekskul, p_murid.nama_lengkap"
+                
+                cursor.execute(sql, tuple(params))
+                absensi_list = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error in get_all_absensi_ekskul_detailed: {e}")
+        finally:
+            if conn.open: conn.close()
+        return absensi_list
+
+    def get_absensi_entry_for_edit(self, id_pendaftaran_ekskul, tanggal_kegiatan):
+        """Mengambil satu entri absensi untuk di-edit, berdasarkan pendaftaran dan tanggal."""
+        conn = self._get_connection()
+        absensi_entry = None
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT 
+                        a.status_kehadiran, a.catatan, a.jam_mulai_kegiatan,
+                        pe.id_murid, pe.id_ekskul, pe.tahun_ajaran
+                    FROM AbsensiEkskul a
+                    JOIN PendaftaranEkskul pe ON a.id_pendaftaran_ekskul = pe.id_pendaftaran_ekskul
+                    WHERE a.id_pendaftaran_ekskul = %s AND a.tanggal_kegiatan = %s
+                """
+                cursor.execute(sql, (id_pendaftaran_ekskul, tanggal_kegiatan))
+                absensi_entry = cursor.fetchone()
+        except pymysql.MySQLError as e:
+            print(f"Error in get_absensi_entry_for_edit: {e}")
+        finally:
+            if conn.open: conn.close()
+        return absensi_entry
+        
+    def delete_absensi_ekskul(self, id_absensi_ekskul):
+        """Menghapus satu entri absensi berdasarkan ID uniknya."""
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                sql = "DELETE FROM AbsensiEkskul WHERE id_absensi_ekskul = %s"
+                cursor.execute(sql, (id_absensi_ekskul,))
+                conn.commit()
+                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+        except pymysql.MySQLError as e:
+            print(f"Error in delete_absensi_ekskul for ID {id_absensi_ekskul}: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn.open: conn.close()
 
     # --- Announcement Management ---
     def get_all_pengumuman(self):
@@ -1167,6 +1255,19 @@ class Config:
             if conn.open: conn.close()
         return murid_list
 
+    def get_all_active_murid(self): # Mungkin Anda perlu ini untuk dropdown
+        conn = self._get_connection()
+        murid_list = []
+        try:
+            with conn.cursor() as cursor:
+                sql = "SELECT id_pengguna, nama_lengkap, nomor_induk FROM Pengguna WHERE peran = 'murid' AND status_aktif = TRUE ORDER BY nama_lengkap"
+                cursor.execute(sql)
+                murid_list = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching all active murid: {e}")
+        finally:
+            if conn.open: conn.close()
+        return murid_list
 
             
 

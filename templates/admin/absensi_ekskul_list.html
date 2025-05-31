@@ -1,0 +1,59 @@
+{% extends "admin/layout_admin.html" %}
+{% block title %}Daftar Absensi Ekstrakurikuler{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Daftar Absensi Ekstrakurikuler</h1>
+    <a href="{{ url_for('manage_absensi_ekskul_admin') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Tambah/Edit Entri Absensi
+    </a>
+</div>
+{# Tambahkan filter di sini jika perlu (tanggal, ekskul, murid) #}
+{% if absensi_list %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover table-sm">
+        <thead>
+            <tr>
+                <th>Tgl Kegiatan</th>
+                <th>Ekskul</th>
+                <th>Nama Murid</th>
+                <th>Status</th>
+                <th>Jam Mulai</th>
+                <th>Catatan</th>
+                <th>Dicatat Oleh</th>
+                <th>Tgl Dicatat</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for absen in absensi_list %}
+            <tr>
+                <td>{{ absen.tanggal_kegiatan.strftime('%d-%m-%Y') if absen.tanggal_kegiatan else '-' }}</td>
+                <td>{{ absen.nama_ekskul }}</td>
+                <td>{{ absen.nama_murid }}</td>
+                <td><span class="badge 
+                    {% if absen.status_kehadiran == 'Hadir' %}bg-success
+                    {% elif absen.status_kehadiran == 'Izin' %}bg-info
+                    {% elif absen.status_kehadiran == 'Sakit' %}bg-warning text-dark
+                    {% elif absen.status_kehadiran == 'Alfa' %}bg-danger
+                    {% else %}bg-secondary{% endif %}">
+                    {{ absen.status_kehadiran }}</span>
+                </td>
+                <td>{{ absen.jam_mulai_kegiatan if absen.jam_mulai_kegiatan else '-' }}</td>
+                <td>{{ absen.catatan|truncate(50,true,'...') if absen.catatan else '-' }}</td>
+                <td>{{ absen.nama_pencatat if absen.nama_pencatat else '-' }}</td>
+                <td>{{ absen.tanggal_dicatat.strftime('%d-%m-%Y %H:%M') if absen.tanggal_dicatat else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('manage_absensi_ekskul_admin', id_pendaftaran_ekskul=absen.id_pendaftaran_ekskul, tanggal_kegiatan_str=absen.tanggal_kegiatan.strftime('%Y-%m-%d')) }}" class="btn btn-sm btn-outline-warning mb-1" title="Edit"><i class="fas fa-edit"></i></a>
+                    <form action="{{ url_for('hapus_absensi_ekskul_admin', id_absensi_ekskul=absen.id_absensi_ekskul) }}" method="POST" style="display:inline;" onsubmit="return confirm('Yakin hapus entri absensi ini?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger mb-1" title="Hapus"><i class="fas fa-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">Belum ada data absensi.</div>
+{% endif %}
+{% endblock %}

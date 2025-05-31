@@ -1,0 +1,92 @@
+{% extends "admin/layout_admin.html" %}
+{% block title %}{{ action }} Entri Absensi Ekstrakurikuler{% endblock %}
+{% block content %}
+<h1>{{ action }} Entri Absensi Ekstrakurikuler</h1>
+
+{# Jika action Edit dan absensi_data ada, kita bisa tampilkan info murid/ekskul terkait #}
+{% if action == 'Edit' and absensi_data and absensi_data.id_murid and absensi_data.id_ekskul %}
+    {# Anda mungkin perlu mengambil nama murid dan ekskul lagi berdasarkan ID ini untuk tampilan #}
+    <p>Mengedit absensi untuk: (Detail Murid & Ekskul bisa ditampilkan di sini jika data lengkap)</p>
+{% endif %}
+
+{# Action form dinamis #}
+{% set form_action_url = url_for('manage_absensi_ekskul_admin') %}
+{% if action == "Edit" and id_pendaftaran_ekskul_edit and tanggal_kegiatan_edit %}
+    {% set form_action_url = url_for('manage_absensi_ekskul_admin', id_pendaftaran_ekskul=id_pendaftaran_ekskul_edit, tanggal_kegiatan_str=tanggal_kegiatan_edit) %}
+{% endif %}
+
+
+<form method="POST" action="{{ form_action_url }}">
+    <div class="mb-3">
+        <label for="id_ekskul" class="form-label">Ekstrakurikuler <span class="text-danger">*</span></label>
+        <select class="form-select" id="id_ekskul" name="id_ekskul" required {% if action == 'Edit' %}disabled{% endif %}>
+            <option value="">-- Pilih Ekskul --</option>
+            {% for eks in list_ekskul %}
+                <option value="{{ eks.id_ekskul }}" 
+                        {% if absensi_data and absensi_data.id_ekskul|int == eks.id_ekskul|int %}selected{% endif %}>
+                    {{ eks.nama_ekskul }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="id_murid" class="form-label">Nama Siswa <span class="text-danger">*</span></label>
+        <select class="form-select" id="id_murid" name="id_murid" required {% if action == 'Edit' %}disabled{% endif %}>
+            <option value="">-- Pilih Siswa --</option>
+            {% for murid in list_murid %}
+                <option value="{{ murid.id_pengguna }}"
+                        {% if absensi_data and absensi_data.id_murid|int == murid.id_pengguna|int %}selected{% endif %}>
+                    {{ murid.nama_lengkap }} ({{ murid.nomor_induk if murid.nomor_induk else 'NIS Kosong' }})
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if action == 'Edit' %}
+    <small class="form-text text-muted">Untuk mengubah murid atau ekskul, hapus entri ini dan buat yang baru.</small>
+    {% endif %}
+
+    <div class="mb-3">
+        <label for="tahun_ajaran_pendaftaran" class="form-label">Tahun Ajaran Pendaftaran Murid di Ekskul <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="tahun_ajaran_pendaftaran" name="tahun_ajaran_pendaftaran" 
+               value="{{ absensi_data.tahun_ajaran if absensi_data and absensi_data.tahun_ajaran else default_tahun_ajaran }}" 
+               placeholder="Contoh: 2024/2025" required {% if action == 'Edit' %}readonly{% endif %}>
+         {% if action == 'Edit' %}
+         <small class="form-text text-muted">Tahun ajaran pendaftaran murid di ekskul ini. Tidak dapat diubah saat edit absensi.</small>
+         {% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="tanggal_kegiatan" class="form-label">Tanggal Kegiatan <span class="text-danger">*</span></label>
+        <input type="date" class="form-control" id="tanggal_kegiatan" name="tanggal_kegiatan" 
+               value="{{ absensi_data.tanggal_kegiatan if absensi_data and absensi_data.tanggal_kegiatan else default_tanggal_absen }}" required {% if action == 'Edit' %}readonly{% endif %}>
+         {% if action == 'Edit' %}
+         <small class="form-text text-muted">Tanggal kegiatan tidak dapat diubah. Untuk tanggal lain, buat entri baru.</small>
+         {% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="jam_kegiatan" class="form-label">Jam Mulai Kegiatan (Opsional)</label>
+        <input type="time" class="form-control" id="jam_kegiatan" name="jam_kegiatan"
+               value="{{ absensi_data.jam_mulai_kegiatan if absensi_data and absensi_data.jam_mulai_kegiatan else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="status_kehadiran" class="form-label">Status Kehadiran <span class="text-danger">*</span></label>
+        <select class="form-select" id="status_kehadiran" name="status_kehadiran" required>
+            <option value="Hadir" {% if absensi_data and absensi_data.status_kehadiran == 'Hadir' %}selected{% endif %}>Hadir</option>
+            <option value="Izin" {% if absensi_data and absensi_data.status_kehadiran == 'Izin' %}selected{% endif %}>Izin</option>
+            <option value="Sakit" {% if absensi_data and absensi_data.status_kehadiran == 'Sakit' %}selected{% endif %}>Sakit</option>
+            <option value="Alfa" {% if absensi_data and absensi_data.status_kehadiran == 'Alfa' %}selected{% endif %}>Alfa</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="catatan_absen" class="form-label">Catatan (Opsional):</label>
+        <textarea class="form-control" id="catatan_absen" name="catatan_absen" rows="2">{{ absensi_data.catatan if absensi_data and absensi_data.catatan else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">{{ action }} Absensi</button>
+    <a href="{{ url_for('list_absensi_ekskul_admin') }}" class="btn btn-secondary">Batal</a>
+</form>
+{% endblock %}
