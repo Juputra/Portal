@@ -806,14 +806,6 @@ class Config:
                 
                 sql_query = f"UPDATE MateriEkskul SET {', '.join(sql_parts)} WHERE id_materi_ekskul = %s"
                 params.append(id_materi_ekskul)
-                
-                # DEBUGGING:
-                print("--- DEBUG update_materi_ekskul ---")
-                print("SQL Query:", sql_query)
-                print("Params:", tuple(params))
-                print("Jumlah %s di SQL:", sql_query.count('%s'))
-                print("Jumlah item di params:", len(params))
-                #------------------------------------
 
                 if sql_query.count('%s') != len(params):
                     print("ERROR KRITIS: Jumlah placeholder %s tidak cocok dengan jumlah parameter!")
@@ -852,7 +844,6 @@ class Config:
             if conn.open: conn.close()
     
     def get_materi_by_ekskul_id(self, id_ekskul):
-        print(f"DEBUG [Config]: get_materi_by_ekskul_id dipanggil untuk id_ekskul: {id_ekskul}")
         conn = self._get_connection()
         materi_list = []
         try:
@@ -876,7 +867,6 @@ class Config:
                 """
                 cursor.execute(sql, (id_ekskul,))
                 materi_list = cursor.fetchall()
-                print(f"DEBUG [Config]: Materi yang diambil untuk id_ekskul {id_ekskul}: {materi_list}") # DEBUG
         except pymysql.MySQLError as e:
             print(f"Error in get_materi_by_ekskul_id: {e}")
         finally:
@@ -1152,28 +1142,27 @@ class Config:
             if conn.open: conn.close()
 
     def get_pengumuman_for_guru(self, id_guru_penerima=None):
-        """
-        Mengambil pengumuman umum dan yang ditargetkan untuk guru.
-        Untuk kesederhanaan, kita ambil semua pengumuman yang target_peran nya 'guru' atau 'semua'.
-        Anda bisa membuat ini lebih kompleks jika ada target_kelas_id atau target_ekskul_id yang relevan.
-        """
         conn = self._get_connection()
         pengumuman_list = []
         try:
             with conn.cursor() as cursor:
-                # Ambil pengumuman yang targetnya 'semua' atau 'guru'
-                # Diurutkan berdasarkan tanggal publikasi terbaru
-                sql = """SELECT judul_pengumuman, isi_pengumuman, tanggal_publikasi 
-                         FROM Pengumuman 
-                         WHERE target_peran = 'semua' OR target_peran = 'guru'
-                         ORDER BY tanggal_publikasi DESC
-                         LIMIT 5""" # Ambil 5 terbaru sebagai contoh
+                sql = """SELECT 
+                                pnm.id_pengumuman, 
+                                pnm.judul_pengumuman, 
+                                pnm.isi_pengumuman, 
+                                pnm.tanggal_publikasi, 
+                                usr.nama_lengkap as nama_pembuat 
+                            FROM Pengumuman pnm
+                            LEFT JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna # <--- UBAH KE LEFT JOIN
+                            WHERE pnm.target_peran = 'semua' OR pnm.target_peran = 'guru'
+                            ORDER BY pnm.tanggal_publikasi DESC
+                            LIMIT 5"""
                 cursor.execute(sql)
                 pengumuman_list = cursor.fetchall()
         except pymysql.MySQLError as e:
-            print(f"Error fetching pengumuman for guru: {e}")
+            print(f"Error in get_pengumuman_for_guru: {e}")
         finally:
-            conn.close()
+            if conn.open: conn.close()
         return pengumuman_list
 
     # --- General Utility ---

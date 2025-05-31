@@ -72,10 +72,23 @@
     <div class="tab-pane fade show active" id="info-content" role="tabpanel" aria-labelledby="info-tab">
         <section class="container-custom">
             <h2>Informasi Terbaru</h2>
+            <p>--- DEBUG TEMPLATE ---</p>
+            <p>Variabel info_terbaru mentah: {{ info_terbaru }}</p>
+            <p>Jumlah item di info_terbaru: {{ info_terbaru|length }}</p>
+            <p>--- AKHIR DEBUG TEMPLATE ---</p>
             {% if info_terbaru %}
-                <ul>
-                {% for info in info_terbaru %}
-                    <li><strong>{{ info.judul_pengumuman }}</strong> ({{ info.tanggal_publikasi|string|slice(0,10) }})<br>{{ info.isi_pengumuman }}</li>
+                <ul class="list-group list-group-flush">
+                {% for pengumuman in info_terbaru %}
+                    <li class="list-group-item mb-2 border rounded p-3">
+                      <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ pengumuman.judul_pengumuman }}</h5>
+                            <small class="text-muted">
+                                {{ pengumuman.tanggal_publikasi.strftime('%d %b %Y, %H:%M') if pengumuman.tanggal_publikasi else 'Tanggal tidak diketahui' }}
+                            </small>
+                        </div>
+                        <p class="mb-1">{{ pengumuman.isi_pengumuman|safe }}</p> {# Gunakan |safe jika isi bisa mengandung HTML sederhana #}
+                        <small class="text-muted">Dibuat oleh: {{ pengumuman.nama_pembuat if pengumuman.nama_pembuat else 'Sistem' }}</small>
+                    </li>
                 {% endfor %}
                 </ul>
             {% else %}

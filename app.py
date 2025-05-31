@@ -493,8 +493,7 @@ class Portal:
             current_tahun_ajaran = "2024/2025" # GANTI DENGAN LOGIKA TAHUN AJARAN AKTIF ANDA
             
             members = self.con.get_members_of_ekskul(ekskul_id, current_tahun_ajaran)
-            list_materi_ekskul = self.con.get_materi_by_ekskul_id(ekskul_id)
-            print(f"DEBUG [App.py - Tepat Sebelum Render]: list_materi_ekskul untuk dikirim ke template: {list_materi_ekskul}") 
+            list_materi_ekskul = self.con.get_materi_by_ekskul_id(ekskul_id) 
             return render_template('admin/ekskul_detail_admin.html', 
                                    ekskul_info=ekskul_info, 
                                    members=members,
@@ -845,7 +844,15 @@ class Portal:
             if request.method == 'POST':
                 judul = request.form.get('judul_pengumuman','').strip()
                 isi = request.form.get('isi_pengumuman','').strip()
-                target_peran = request.form.get('target_peran') 
+                target_peran = request.form.get('target_peran')
+                if target_peran == "":
+                    target_peran_db = 'semua'
+                elif target_peran in ['admin', 'guru', 'murid']:
+                    target_peran_db = target_peran
+                else: # Jika tidak ada yang dipilih atau nilai tidak valid, bisa default ke NULL atau 'semua'
+                      # Tergantung bagaimana Anda ingin menangani jika tidak ada target peran spesifik
+                      # namun ada target kelas atau ekskul. Untuk "Semua Peran" dari dropdown, ini akan jadi 'semua'.
+                    target_peran_db = None # Atau 'semua' jika itu default jika target lain juga kosong 
                 # Ambil target_kelas_id dan target_ekskul_id, pastikan integer atau None
                 target_kelas_id_str = request.form.get('target_kelas_id')
                 target_kelas_id = int(target_kelas_id_str) if target_kelas_id_str and target_kelas_id_str.isdigit() else None
@@ -860,7 +867,7 @@ class Portal:
                         'judul_pengumuman': judul,
                         'isi_pengumuman': isi,
                         'id_pembuat': session['user_id'], # ID admin yang login
-                        'target_peran': target_peran if target_peran else None, # Jika "" jadikan None
+                        'target_peran': target_peran_db, # Jika "" jadikan None
                         'target_kelas_id': target_kelas_id,
                         'target_ekskul_id': target_ekskul_id
                     }
@@ -894,7 +901,15 @@ class Portal:
             if request.method == 'POST':
                 judul = request.form.get('judul_pengumuman','').strip()
                 isi = request.form.get('isi_pengumuman','').strip()
-                target_peran = request.form.get('target_peran') 
+                target_peran = request.form.get('target_peran')
+                if target_peran == "":
+                    target_peran_db = 'semua'
+                elif target_peran in ['admin', 'guru', 'murid']:
+                    target_peran_db = target_peran
+                else: # Jika tidak ada yang dipilih atau nilai tidak valid, bisa default ke NULL atau 'semua'
+                      # Tergantung bagaimana Anda ingin menangani jika tidak ada target peran spesifik
+                      # namun ada target kelas atau ekskul. Untuk "Semua Peran" dari dropdown, ini akan jadi 'semua'.
+                    target_peran_db = None # Atau 'semua' jika itu default jika target lain juga kosong 
                 
                 target_kelas_id_str = request.form.get('target_kelas_id')
                 target_kelas_id = int(target_kelas_id_str) if target_kelas_id_str and target_kelas_id_str.isdigit() else None
@@ -916,7 +931,7 @@ class Portal:
                     data_pengumuman_update = {
                         'judul_pengumuman': judul,
                         'isi_pengumuman': isi,
-                        'target_peran': target_peran if target_peran else None,
+                        'target_peran': target_peran_db,
                         'target_kelas_id': target_kelas_id,
                         'target_ekskul_id': target_ekskul_id
                         # id_pembuat dan tanggal_publikasi tidak diubah saat edit
@@ -1090,29 +1105,20 @@ class Portal:
         def dashboard_guru():
             guru_id = session.get('user_id')
             nama_guru = session.get('nama_lengkap')
+            info_terbaru_guru = self.con.get_pengumuman_for_guru(guru_id)
             
-            # Ambil data dari Config
+            # ... (pengambilan data lain seperti jadwal_ekskul_guru, dll.) ...
             jadwal_ekskul_guru = self.con.get_ekskul_by_pembina(guru_id)
-            info_terbaru_guru = self.con.get_pengumuman_for_guru(guru_id) # Mungkin perlu id_guru
-            
-            # Untuk dropdown absen: ekskul yang dibina guru & murid yang relevan
-            # Daftar ekskul sudah ada di jadwal_ekskul_guru
-            # Daftar murid bisa diambil berdasarkan ekskul yang dipilih guru di form, atau semua murid terkait guru
-            # Untuk V1, kita kirim semua murid yang relevan dengan guru ini.
-            # HTML Anda (test.html) punya JS untuk manajemen siswa lokal, ini berbeda.
-            # Untuk form absen, kita perlu daftar murid yang akan diabsen.
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025"
-
-            
-            # Tahun ajaran aktif (ini perlu mekanisme yang lebih baik)
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025" # GANTI INI JIKA PERLU
             murid_untuk_absen = self.con.get_murid_options_for_guru_absen(guru_id, tahun_ajaran_aktif)
+
 
             return render_template('guru/dashboard_guru.html', 
                                    nama_guru=nama_guru,
                                    jadwal_ekskul=jadwal_ekskul_guru,
-                                   info_terbaru=info_terbaru_guru,
-                                   murid_untuk_absen=murid_untuk_absen, # Untuk dropdown nama siswa di form absen
-                                   ekskul_guru=jadwal_ekskul_guru, # Untuk dropdown ekskul di form absen
+                                   info_terbaru=info_terbaru_guru, # Ini variabel yang dikirim ke template
+                                   murid_untuk_absen=murid_untuk_absen,
+                                   ekskul_guru=jadwal_ekskul_guru, 
                                    tahun_ajaran_aktif=tahun_ajaran_aktif,
                                    default_tanggal_absen=date.today().isoformat())
 
