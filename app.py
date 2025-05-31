@@ -19,7 +19,7 @@ class Portal:
         self.app.secret_key = 'ganti_dengan_kunci_rahasia_yang_kuat_dan_unik_98765!' 
         self.con = Config() # Membuat instance dari Config Anda
         self.routes()
-        self.app.config['UPLOAD_FOLDER'] = 'static/uploads/materi_ekskul' 
+        self.app.config['UPLOAD_FOLDER'] = os.path.join(self.app.root_path, 'static/uploads/materi_ekskul') 
         self.app.config['ALLOWED_EXTENSIONS'] = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'}
 
 
@@ -567,84 +567,83 @@ class Portal:
                 deskripsi_materi = request.form.get('deskripsi_materi','').strip()
                 tipe_konten = request.form.get('tipe_konten')
                 
-                path_konten_atau_link = None
-                isi_konten_teks = None
+                path_konten_final = None # Untuk menyimpan nama file, URL, atau None
+                isi_konten_teks_final = None
 
                 if not id_ekskul or not judul_materi or not tipe_konten:
                     flash("Ekskul, Judul Materi, dan Tipe Konten wajib diisi.", "danger")
                 else:
                     id_ekskul = int(id_ekskul)
+                    save_to_db = False # Flag apakah data valid untuk disimpan
+
                     if tipe_konten == 'file':
                         if 'file_konten' not in request.files:
-                            flash('Tidak ada bagian file yang dipilih.', 'danger')
+                            flash('Tidak ada bagian file yang dipilih untuk diunggah.', 'danger')
                         else:
                             file = request.files['file_konten']
                             if file.filename == '':
                                 flash('Tidak ada file yang dipilih untuk diunggah.', 'danger')
-                            # elif file and allowed_file(file.filename, self.app.config['ALLOWED_EXTENSIONS']): # Anda perlu implementasi allowed_file
-                            elif file: # Simplifikasi untuk contoh, tambahkan validasi ekstensi di produksi
-                                filename = secure_filename(file.filename)
-                                # Pastikan direktori upload ada
-                                upload_path_dir = os.path.join(self.app.root_path, self.app.config['UPLOAD_FOLDER'])
+                            elif file and allowed_file(file.filename, self.app.config['ALLOWED_EXTENSIONS']):
+                                filename = secure_filename(file.filename) # Amankan nama file
+                                
+                                # Buat direktori upload jika belum ada
+                                upload_path_dir = self.app.config['UPLOAD_FOLDER']
                                 if not os.path.exists(upload_path_dir):
-                                    os.makedirs(upload_path_dir)
-                                file.save(os.path.join(upload_path_dir, filename))
-                                path_konten_atau_link = filename # Simpan nama file, atau path relatif dari UPLOAD_FOLDER
+                                    os.makedirs(upload_path_dir, exist_ok=True) # exist_ok=True agar tidak error jika folder sudah ada
+                                
+                                file_path_tujuan = os.path.join(upload_path_dir, filename)
+                                
+                                # Cek jika file dengan nama sama sudah ada untuk menghindari penimpaan tidak sengaja
+                                # Anda bisa menambahkan angka atau timestamp ke nama file jika ingin unik
+                                # if os.path.exists(file_path_tujuan):
+                                #     flash(f'File dengan nama {filename} sudah ada. Silakan ganti nama file atau hapus yang lama.', 'warning')
+                                # else:
+                                file.save(file_path_tujuan)
+                                path_konten_final = filename # Simpan nama file (atau path relatif jika perlu)
+                                save_to_db = True
                                 flash(f'File {filename} berhasil diunggah.', 'info')
-                            else:
-                                flash('Tipe file tidak diizinkan.', 'danger')
+                            elif file: # Jika file ada tapi tidak diizinkan
+                                flash('Tipe file tidak diizinkan. Ekstensi yang diizinkan: ' + ', '.join(self.app.config['ALLOWED_EXTENSIONS']), 'danger')
+                    
                     elif tipe_konten in ['link', 'video_embed']:
-                        path_konten_atau_link = request.form.get('path_konten_atau_link_url','').strip()
-                        if not path_konten_atau_link:
+                        path_konten_final = request.form.get('path_konten_atau_link_url','').strip()
+                        if not path_konten_final:
                              flash('URL/Link atau Kode Embed Video wajib diisi untuk tipe ini.', 'danger')
+                        else:
+                            save_to_db = True
+                    
                     elif tipe_konten == 'teks':
-                        isi_konten_teks = request.form.get('isi_konten_teks_area','').strip()
-                        if not isi_konten_teks:
+                        isi_konten_teks_final = request.form.get('isi_konten_teks_area','').strip()
+                        if not isi_konten_teks_final:
                             flash('Isi konten teks wajib diisi untuk tipe ini.', 'danger')
+                        else:
+                            save_to_db = True
                     
-                    # Lanjutkan penyimpanan jika path_konten_atau_link atau isi_konten_teks sudah valid (atau boleh kosong tergantung logika)
-                    # Misalnya, jika tipe file dan file gagal diupload, path_konten_atau_link akan None
-                    # Anda perlu logika validasi yang lebih baik di sini
-                    
-                    data_materi = {
-                        'id_ekskul': id_ekskul,
-                        'judul_materi': judul_materi,
-                        'deskripsi_materi': deskripsi_materi,
-                        'tipe_konten': tipe_konten,
-                        'path_konten_atau_link': path_konten_atau_link,
-                        'isi_konten_teks': isi_konten_teks,
-                        'id_pengunggah': session['user_id']
-                    }
-                    
-                    # Hanya simpan jika ada konten yang relevan (misal, file berhasil diupload atau link/teks diisi)
-                    # Logika ini perlu disempurnakan: jika file wajib, maka harus ada path_konten_atau_link
-                    save_to_db = False
-                    if tipe_konten == 'file' and path_konten_atau_link: save_to_db = True
-                    elif tipe_konten in ['link', 'video_embed'] and path_konten_atau_link: save_to_db = True
-                    elif tipe_konten == 'teks' and isi_konten_teks: save_to_db = True
-                    elif tipe_konten not in ['file', 'link', 'video_embed', 'teks']: # Tipe konten tidak valid
-                        flash('Tipe konten tidak valid.', 'danger')
-                        save_to_db = False
-
+                    else: # Tipe konten tidak valid
+                        flash('Tipe konten tidak valid dipilih.', 'danger')
 
                     if save_to_db:
+                        data_materi = {
+                            'id_ekskul': id_ekskul,
+                            'judul_materi': judul_materi,
+                            'deskripsi_materi': deskripsi_materi,
+                            'tipe_konten': tipe_konten,
+                            'path_konten_atau_link': path_konten_final,
+                            'isi_konten_teks': isi_konten_teks_final,
+                            'id_pengunggah': session['user_id']
+                        }
                         materi_id = self.con.add_materi_ekskul(data_materi)
                         if materi_id:
                             flash("Materi ekstrakurikuler berhasil ditambahkan!", "success")
                             return redirect(url_for('materi_ekskul_admin'))
                         else:
-                            flash("Gagal menambahkan materi. Periksa log server.", "danger")
-                    elif not path_konten_atau_link and not isi_konten_teks and tipe_konten in ['file', 'link', 'video_embed', 'teks']:
-                         flash("Konten untuk materi (file/link/teks) tidak boleh kosong.", "danger")
-
-
+                            flash("Gagal menambahkan materi ke database. Periksa log server.", "danger")
+            
             list_ekskul = self.con.get_all_ekskul()
             return render_template('admin/materi_ekskul_form_admin.html', 
                                    action="Tambah", 
-                                   materi_data=None,
+                                   materi_data=request.form if request.method == 'POST' else None, # Kirim data form kembali jika ada error
                                    list_ekskul=list_ekskul)
-        @self.app.route('/admin/materi_ekskul/edit/<int:id_materi_ekskul>', methods=['GET', 'POST'])
-        @self.admin_login_required
         def edit_materi_ekskul_admin(id_materi_ekskul):
             materi_data_lama = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
             if not materi_data_lama:

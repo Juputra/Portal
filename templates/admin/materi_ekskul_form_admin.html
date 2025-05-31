@@ -58,6 +58,22 @@
             </select>
         </div>
 
+    <form method="POST" enctype="multipart/form-data" action="{{ form_action_url }}"> {# PENTING: enctype #}
+        {# ... (field id_ekskul, judul_materi, deskripsi_materi, tipe_konten) ... #}
+        
+        <div id="field_file_konten" class="mb-3" style="display: none;">
+            <label for="file_konten" class="form-label">Unggah File</label>
+            <input type="file" class="form-control" id="file_konten" name="file_konten">
+            {% if action == 'Edit' and materi_data and materi_data.tipe_konten == 'file' and materi_data.path_konten_atau_link %}
+            <small class="form-text text-muted">File saat ini: 
+                <a href="{{ url_for('static', filename='uploads/materi_ekskul/' + materi_data.path_konten_atau_link) }}" target="_blank">
+                    {{ materi_data.path_konten_atau_link }}
+                </a>. 
+                Unggah file baru hanya jika ingin mengganti.
+            </small>
+            {% endif %}
+        </div>
+
         <div class="mb-3">
             <label for="judul_materi" class="form-label">Judul Materi <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="judul_materi" name="judul_materi" 
