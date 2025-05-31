@@ -810,6 +810,38 @@ class Config:
             return None
         finally:
             if conn.open: conn.close()
+    
+    def get_materi_by_ekskul_id(self, id_ekskul):
+        print(f"DEBUG [Config]: get_materi_by_ekskul_id dipanggil untuk id_ekskul: {id_ekskul}")
+        conn = self._get_connection()
+        materi_list = []
+        try:
+            with conn.cursor() as cursor:
+                # Join dengan tabel Pengguna untuk mendapatkan nama pengunggah
+                sql = """
+                    SELECT 
+                        me.id_materi_ekskul, 
+                        me.id_ekskul,
+                        me.judul_materi, 
+                        me.deskripsi_materi,
+                        me.tipe_konten, 
+                        me.path_konten_atau_link,
+                        me.isi_konten_teks,
+                        me.tanggal_unggah, 
+                        p.nama_lengkap AS nama_pengunggah
+                    FROM MateriEkskul me
+                    JOIN Pengguna p ON me.id_pengunggah = p.id_pengguna
+                    WHERE me.id_ekskul = %s
+                    ORDER BY me.tanggal_unggah DESC
+                """
+                cursor.execute(sql, (id_ekskul,))
+                materi_list = cursor.fetchall()
+                print(f"DEBUG [Config]: Materi yang diambil untuk id_ekskul {id_ekskul}: {materi_list}") # DEBUG
+        except pymysql.MySQLError as e:
+            print(f"Error in get_materi_by_ekskul_id: {e}")
+        finally:
+            if conn.open: conn.close()
+        return materi_list
 
     # --- Attendance Management ---
     def save_absensi_ekskul(self, id_pendaftaran_ekskul, tanggal_kegiatan, status_kehadiran, dicatat_oleh_id, catatan=None, jam_kegiatan=None):

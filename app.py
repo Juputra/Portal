@@ -493,10 +493,12 @@ class Portal:
             current_tahun_ajaran = "2024/2025" # GANTI DENGAN LOGIKA TAHUN AJARAN AKTIF ANDA
             
             members = self.con.get_members_of_ekskul(ekskul_id, current_tahun_ajaran)
-            
+            list_materi_ekskul = self.con.get_materi_by_ekskul_id(ekskul_id)
+            print(f"DEBUG [App.py - Tepat Sebelum Render]: list_materi_ekskul untuk dikirim ke template: {list_materi_ekskul}") 
             return render_template('admin/ekskul_detail_admin.html', 
                                    ekskul_info=ekskul_info, 
                                    members=members,
+                                   list_materi=list_materi_ekskul,
                                    tahun_ajaran_display=current_tahun_ajaran)
 
         # --- Daftarkan Murid ke Ekstrakurikuler (Admin) ---
@@ -561,6 +563,13 @@ class Portal:
         @self.app.route('/admin/materi_ekskul/tambah', methods=['GET', 'POST'])
         @self.admin_login_required
         def tambah_materi_ekskul_admin():
+            # Ambil id_ekskul_default dari query parameter jika ada
+            id_ekskul_default = request.args.get('id_ekskul_default', type=int)
+            
+            # Siapkan data untuk form, terutama untuk pre-fill id_ekskul jika dari tombol "Tambah Materi untuk Ekskul Ini"
+            materi_data_for_form = None
+            if id_ekskul_default and request.method == 'GET': # Hanya pre-fill untuk GET request
+                materi_data_for_form = {'id_ekskul': id_ekskul_default}
             if request.method == 'POST':
                 id_ekskul = request.form.get('id_ekskul')
                 judul_materi = request.form.get('judul_materi','').strip()
