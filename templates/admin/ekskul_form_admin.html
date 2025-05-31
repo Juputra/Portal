@@ -50,6 +50,13 @@
                 {# Jika kategori disimpan di database (tabel KategoriEkskul terpisah), Anda bisa mengisi opsi ini secara dinamis #}
             </select>
         </div>
+        <div class="mb-3">
+            <label for="kuota_maksimal" class="form-label">Kuota Maksimal</label>
+            <input type="number" class="form-control" id="kuota_maksimal" name="kuota_maksimal" 
+                value="{{ ekskul_data.kuota_maksimal if ekskul_data and ekskul_data.kuota_maksimal is not none else '' }}" 
+                min="0" placeholder="Contoh: 30 (kosongkan jika tidak terbatas)">
+            <small class="form-text text-muted">Kosongkan field ini jika tidak ada batasan kuota.</small>
+        </div>
         <button type="submit" class="btn btn-primary">{{ action }} Ekstrakurikuler</button>
         <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Batal</a>
     </form>

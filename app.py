@@ -505,33 +505,65 @@ class Portal:
         @self.app.route('/admin/ekskul/<int:ekskul_id>/register', methods=['GET', 'POST'])
         @self.admin_login_required
         def register_student_ekskul_admin(ekskul_id):
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id) # Asumsi Anda sudah punya metode ini
+            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
             if not ekskul_info:
                 flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
                 return redirect(url_for('ekskul_admin'))
 
             if request.method == 'POST':
-                murid_id_to_register = request.form.get('id_murid')
-                tahun_ajaran = request.form.get('tahun_ajaran') # Ambil tahun ajaran dari form atau default
+                murid_id_to_register_str = request.form.get('id_murid')
+                tahun_ajaran = request.form.get('tahun_ajaran')
 
-                if not murid_id_to_register or not tahun_ajaran:
+                if not murid_id_to_register_str or not tahun_ajaran:
                     flash("Pilih murid dan masukkan tahun ajaran.", "warning")
                 else:
-                    murid_id_to_register = int(murid_id_to_register)
-                    # Admin langsung mendaftarkan dengan status 'Disetujui'
-                    if self.con.register_student_for_ekskul(murid_id_to_register, ekskul_id, tahun_ajaran, status_pendaftaran='Disetujui'):
-                        murid_info = self.con.get_user_by_id(murid_id_to_register)
-                        flash(f"Murid '{murid_info['nama_lengkap'] if murid_info else 'ID: '+str(murid_id_to_register)}' berhasil didaftarkan ke ekskul '{ekskul_info['nama_ekskul']}'.", 'success')
-                        # Arahkan ke halaman detail ekskul jika ada, atau kembali ke daftar ekskul
-                        return redirect(url_for('ekskul_admin')) 
-                    else:
-                        flash(f"Gagal mendaftarkan murid ke ekskul. Mungkin murid sudah terdaftar atau terjadi kesalahan.", 'danger')
-            
-            # Ambil tahun ajaran saat ini atau yang relevan
-            # Untuk contoh, kita bisa hardcode atau ambil dari konfigurasi
-            current_tahun_ajaran = "2024/2025" # Ganti dengan logika yang sesuai
+                    try:
+                        murid_id_to_register = int(murid_id_to_register_str)
+                        catatan_pendaftar = f"Didaftarkan oleh Admin: {session.get('nama_lengkap')}"
+                        
+                        # Panggil metode yang sudah diupdate di Config
+                        hasil_pendaftaran = self.con.register_student_for_ekskul(
+                            murid_id_to_register, 
+                            ekskul_id, 
+                            tahun_ajaran, 
+                            status_pendaftaran='Disetujui', # Admin langsung menyetujui
+                            catatan_pendaftar=catatan_pendaftar
+                        )
+
+                        if isinstance(hasil_pendaftaran, int): # Berhasil, mengembalikan ID pendaftaran
+                            murid_info = self.con.get_user_by_id(murid_id_to_register)
+                            flash(f"Murid '{murid_info['nama_lengkap'] if murid_info else 'ID: '+str(murid_id_to_register)}' berhasil didaftarkan ke ekskul '{ekskul_info['nama_ekskul']}'.", 'success')
+                            return redirect(url_for('ekskul_detail_admin', ekskul_id=ekskul_id))
+                        elif hasil_pendaftaran == "KUOTA_PENUH":
+                            flash(f"Gagal mendaftarkan murid. Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh.", "warning")
+                        elif hasil_pendaftaran == "SUDAH_TERDAFTAR":
+                            murid_info = self.con.get_user_by_id(murid_id_to_register) # Ambil info murid untuk pesan
+                            flash(f"Gagal mendaftarkan murid '{murid_info['nama_lengkap'] if murid_info else 'ID: '+str(murid_id_to_register)}'. Murid tersebut sudah memiliki record pendaftaran di ekskul '{ekskul_info['nama_ekskul']}' untuk tahun ajaran ini.", "warning")
+                        elif hasil_pendaftaran == "EKSKUL_NOT_FOUND": # Meskipun sudah dicek di awal, ini untuk konsistensi
+                            flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan saat proses pendaftaran.", 'danger')
+                        else: # hasil_pendaftaran adalah False atau None (error umum)
+                            flash(f"Gagal mendaftarkan murid ke ekskul '{ekskul_info['nama_ekskul']}'. Terjadi kesalahan pada sistem.", 'danger')
+                    
+                    except ValueError:
+                        flash("ID Murid tidak valid.", "danger")
+                    except Exception as e:
+                        flash(f"Terjadi kesalahan internal: {e}", "danger")
+                        print(f"Error di register_student_ekskul_admin: {e}")
+                
+                # Jika ada flash error atau warning, kita ingin kembali ke form dengan data yang mungkin sudah diisi
+                # Namun, karena ini redirect, data form tidak akan terbawa kecuali kita pass lagi
+                # Untuk kesederhanaan, kita redirect ke halaman GET form lagi
+                return redirect(url_for('register_student_ekskul_admin', ekskul_id=ekskul_id))
+
+            # Bagian GET request
+            # Tentukan tahun ajaran aktif untuk dropdown dan filter
+            current_tahun_ajaran = self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025" # GANTI INI
             available_students = self.con.get_all_active_murid_exclude_ekskul(ekskul_id, current_tahun_ajaran)
-            return render_template('admin/register_student_ekskul_form.html', ekskul_info=ekskul_info, available_students=available_students, current_tahun_ajaran=current_tahun_ajaran)
+            
+            return render_template('admin/register_student_ekskul_form.html', 
+                                   ekskul_info=ekskul_info, 
+                                   available_students=available_students, 
+                                   current_tahun_ajaran=current_tahun_ajaran)
 
         # --- Keluarkan Murid dari Ekskul (Admin) ---
         @self.app.route('/admin/ekskul/remove_member/<int:pendaftaran_id>', methods=['POST'])

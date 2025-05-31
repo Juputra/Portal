@@ -467,6 +467,10 @@ class Config:
                     sql_parts.append("kategori = %s")
                     params.append(ekskul_data.get('kategori'))
                 if 'id_guru_pembina' in ekskul_data: sql_parts.append("id_guru_pembina = %s"); params.append(ekskul_data.get('id_guru_pembina'))
+                if 'kuota_maksimal' in ekskul_data:
+                    sql_parts.append("kuota_maksimal = %s")
+                    # ekskul_data['kuota_maksimal'] sudah None jika kosong dari app.py
+                    params.append(ekskul_data['kuota_maksimal']) 
                 # ... (lanjutkan untuk field lain: jadwal_deskripsi, lokasi, dll.) ...
 
                 if not sql_parts:
@@ -552,29 +556,65 @@ class Config:
             conn.close()
         return murid_list
 
-    def register_student_for_ekskul(self, murid_id, ekskul_id, tahun_ajaran, status_pendaftaran='Disetujui', catatan_admin="Didaftarkan oleh Admin"):
+    def register_student_for_ekskul(self, murid_id, ekskul_id, tahun_ajaran, 
+                                    status_pendaftaran='Disetujui', 
+                                    catatan_pendaftar="Didaftarkan oleh sistem"): # Ganti catatan_admin menjadi lebih umum
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
-                # Cek duplikasi
-                sql_check = "SELECT 1 FROM PendaftaranEkskul WHERE id_murid = %s AND id_ekskul = %s AND tahun_ajaran = %s"
-                cursor.execute(sql_check, (murid_id, ekskul_id, tahun_ajaran))
-                if cursor.fetchone():
-                    print(f"Murid ID {murid_id} sudah terdaftar/menunggu di Ekskul ID {ekskul_id} untuk tahun ajaran {tahun_ajaran}.")
-                    return False
+                # Langkah 1: Dapatkan informasi kuota ekskul
+                sql_get_ekskul_info = "SELECT kuota_maksimal, nama_ekskul FROM Ekstrakurikuler WHERE id_ekskul = %s"
+                cursor.execute(sql_get_ekskul_info, (ekskul_id,))
+                ekskul_info = cursor.fetchone()
 
-                sql = """INSERT INTO PendaftaranEkskul 
-                         (id_murid, id_ekskul, tahun_ajaran, status_pendaftaran, catatan_admin_pembina)
-                         VALUES (%s, %s, %s, %s, %s)"""
-                cursor.execute(sql, (murid_id, ekskul_id, tahun_ajaran, status_pendaftaran, catatan_admin))
+                if not ekskul_info:
+                    print(f"Ekskul ID {ekskul_id} tidak ditemukan.")
+                    return "EKSKUL_NOT_FOUND" 
+
+                kuota = ekskul_info.get('kuota_maksimal')
+                nama_ekskul = ekskul_info.get('nama_ekskul')
+
+                # Langkah 2: Cek kuota jika ada (tidak NULL dan > 0)
+                if kuota is not None and kuota > 0:
+                    sql_count_participants = """
+                        SELECT COUNT(*) as jumlah_peserta 
+                        FROM PendaftaranEkskul 
+                        WHERE id_ekskul = %s AND tahun_ajaran = %s 
+                        AND status_pendaftaran IN ('Disetujui', 'Terdaftar') 
+                    """ # Hanya hitung yang statusnya aktif/disetujui
+                    cursor.execute(sql_count_participants, (ekskul_id, tahun_ajaran))
+                    jumlah_peserta_aktif = cursor.fetchone()['jumlah_peserta']
+
+                    if jumlah_peserta_aktif >= kuota:
+                        print(f"Kuota untuk Ekskul '{nama_ekskul}' (ID: {ekskul_id}) sudah penuh ({jumlah_peserta_aktif}/{kuota}).")
+                        return "KUOTA_PENUH" # Kembalikan status spesifik
+
+                # Langkah 3: Cek apakah murid sudah terdaftar (mencegah duplikasi)
+                sql_check_duplikasi = """SELECT id_pendaftaran_ekskul, status_pendaftaran 
+                                         FROM PendaftaranEkskul 
+                                         WHERE id_murid = %s AND id_ekskul = %s AND tahun_ajaran = %s"""
+                cursor.execute(sql_check_duplikasi, (murid_id, ekskul_id, tahun_ajaran))
+                pendaftaran_lama = cursor.fetchone()
+                
+                if pendaftaran_lama:
+                    # Jika sudah ada dan statusnya 'Berhenti' atau 'Ditolak', mungkin bisa diupdate/didaftarkan ulang
+                    # Untuk saat ini, kita anggap tidak bisa jika sudah ada record apapun
+                    print(f"Murid ID {murid_id} sudah memiliki record pendaftaran di Ekskul '{nama_ekskul}' untuk tahun {tahun_ajaran} dengan status {pendaftaran_lama['status_pendaftaran']}.")
+                    return "SUDAH_TERDAFTAR"
+
+                # Langkah 4: Jika semua pengecekan lolos, lakukan INSERT
+                sql_insert = """INSERT INTO PendaftaranEkskul 
+                                (id_murid, id_ekskul, tahun_ajaran, status_pendaftaran, catatan_admin_pembina)
+                                VALUES (%s, %s, %s, %s, %s)"""
+                cursor.execute(sql_insert, (murid_id, ekskul_id, tahun_ajaran, status_pendaftaran, catatan_pendaftar))
                 conn.commit()
-                return True # Berhasil
+                return cursor.lastrowid # Mengembalikan ID pendaftaran baru jika berhasil
         except pymysql.MySQLError as e:
-            print(f"Error registering student {murid_id} for ekskul {ekskul_id}: {e}")
+            print(f"Error in register_student_for_ekskul (murid:{murid_id}, ekskul:{ekskul_id}): {e}")
             conn.rollback()
-            return False
+            return False # Indikasi error umum
         finally:
-            conn.close()
+            if conn.open: conn.close()
 
     def get_members_of_ekskul(self, ekskul_id, tahun_ajaran_aktif):
       conn = self._get_connection()
