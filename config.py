@@ -975,6 +975,94 @@ class Config:
             if conn.open: conn.close()
         return new_id
 
+    def get_pengumuman_by_id(self, id_pengumuman):
+        conn = self._get_connection()
+        pengumuman = None
+        try:
+            with conn.cursor() as cursor:
+                # Mengambil detail pengumuman termasuk data target jika ada
+                # dan nama pembuat
+                sql = """
+                    SELECT 
+                        pnm.id_pengumuman, pnm.judul_pengumuman, pnm.isi_pengumuman,
+                        pnm.id_pembuat, pnm.tanggal_publikasi, 
+                        pnm.target_ekskul_id, pnm.target_kelas_id, pnm.target_peran,
+                        usr.nama_lengkap AS nama_pembuat
+                    FROM Pengumuman pnm
+                    JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna
+                    WHERE pnm.id_pengumuman = %s
+                """
+                cursor.execute(sql, (id_pengumuman,))
+                pengumuman = cursor.fetchone()
+        except pymysql.MySQLError as e:
+            print(f"Error in get_pengumuman_by_id for ID {id_pengumuman}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return pengumuman
+
+    def update_pengumuman(self, id_pengumuman, data_pengumuman):
+        # data_pengumuman: {'judul_pengumuman': ..., 'isi_pengumuman': ..., 
+        #                  'target_ekskul_id': ..., 'target_kelas_id': ..., 'target_peran': ...}
+        # id_pembuat dan tanggal_publikasi biasanya tidak diubah saat edit.
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                sql_parts = []
+                params = []
+
+                if 'judul_pengumuman' in data_pengumuman:
+                    sql_parts.append("judul_pengumuman = %s")
+                    params.append(data_pengumuman['judul_pengumuman'])
+                if 'isi_pengumuman' in data_pengumuman:
+                    sql_parts.append("isi_pengumuman = %s")
+                    params.append(data_pengumuman['isi_pengumuman'])
+                
+                # Target bisa diubah menjadi None jika dikosongkan dari form
+                target_peran = data_pengumuman.get('target_peran')
+                sql_parts.append("target_peran = %s")
+                params.append(target_peran if target_peran and target_peran != "" else None)
+                
+                target_kelas_id = data_pengumuman.get('target_kelas_id')
+                sql_parts.append("target_kelas_id = %s")
+                params.append(target_kelas_id if target_kelas_id else None) # Sudah int atau None dari app.py
+
+                target_ekskul_id = data_pengumuman.get('target_ekskul_id')
+                sql_parts.append("target_ekskul_id = %s")
+                params.append(target_ekskul_id if target_ekskul_id else None) # Sudah int atau None dari app.py
+                
+                if not sql_parts:
+                    return True # Tidak ada yang diupdate
+
+                sql_parts.append("updated_at = NOW()") # Selalu update kolom updated_at
+
+                sql_query = f"UPDATE Pengumuman SET {', '.join(sql_parts)} WHERE id_pengumuman = %s"
+                params.append(id_pengumuman)
+                
+                cursor.execute(sql_query, tuple(params))
+                conn.commit()
+                return True
+        except pymysql.MySQLError as e:
+            print(f"Error in update_pengumuman for ID {id_pengumuman}: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn.open: conn.close()
+
+    def delete_pengumuman(self, id_pengumuman):
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                sql = "DELETE FROM Pengumuman WHERE id_pengumuman = %s"
+                cursor.execute(sql, (id_pengumuman,))
+                conn.commit()
+                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+        except pymysql.MySQLError as e:
+            print(f"Error in delete_pengumuman for ID {id_pengumuman}: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn.open: conn.close()
+
     def get_pengumuman_for_guru(self, id_guru_penerima=None):
         """
         Mengambil pengumuman umum dan yang ditargetkan untuk guru.

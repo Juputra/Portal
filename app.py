@@ -883,7 +883,88 @@ class Portal:
                                    list_kelas=list_kelas,
                                    list_ekskul=list_ekskul)
 
-    # === Guru Route
+        @self.app.route('/admin/pengumuman/edit/<int:id_pengumuman>', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def edit_pengumuman_admin(id_pengumuman):
+            pengumuman_to_edit = self.con.get_pengumuman_by_id(id_pengumuman)
+            if not pengumuman_to_edit:
+                flash(f"Pengumuman dengan ID {id_pengumuman} tidak ditemukan.", "danger")
+                return redirect(url_for('pengumuman_admin'))
+
+            if request.method == 'POST':
+                judul = request.form.get('judul_pengumuman','').strip()
+                isi = request.form.get('isi_pengumuman','').strip()
+                target_peran = request.form.get('target_peran') 
+                
+                target_kelas_id_str = request.form.get('target_kelas_id')
+                target_kelas_id = int(target_kelas_id_str) if target_kelas_id_str and target_kelas_id_str.isdigit() else None
+                
+                target_ekskul_id_str = request.form.get('target_ekskul_id')
+                target_ekskul_id = int(target_ekskul_id_str) if target_ekskul_id_str and target_ekskul_id_str.isdigit() else None
+
+                if not judul or not isi:
+                    flash("Judul dan Isi pengumuman wajib diisi.", "danger")
+                    # Untuk mengisi ulang form dengan data yang baru diinput jika ada error validasi
+                    # Kita perlu membuat dict baru dari request.form dan menggabungkannya dengan data asli
+                    # agar field yang tidak ada di form (seperti id_pembuat) tidak hilang
+                    current_form_data = pengumuman_to_edit.copy() # Salin data asli
+                    current_form_data.update(dict(request.form)) # Timpa dengan data form
+                    # Konversi ID kembali ke int atau None karena request.form selalu string
+                    current_form_data['target_kelas_id'] = target_kelas_id
+                    current_form_data['target_ekskul_id'] = target_ekskul_id
+                else:
+                    data_pengumuman_update = {
+                        'judul_pengumuman': judul,
+                        'isi_pengumuman': isi,
+                        'target_peran': target_peran if target_peran else None,
+                        'target_kelas_id': target_kelas_id,
+                        'target_ekskul_id': target_ekskul_id
+                        # id_pembuat dan tanggal_publikasi tidak diubah saat edit
+                    }
+                    if self.con.update_pengumuman(id_pengumuman, data_pengumuman_update):
+                        flash("Pengumuman berhasil diperbarui!", "success")
+                        return redirect(url_for('pengumuman_admin'))
+                    else:
+                        flash("Gagal memperbarui pengumuman. Periksa log server.", "danger")
+                        current_form_data = pengumuman_to_edit.copy()
+                        current_form_data.update(dict(request.form))
+                        current_form_data['target_kelas_id'] = target_kelas_id
+                        current_form_data['target_ekskul_id'] = target_ekskul_id
+                
+                # Jika POST gagal atau validasi gagal, render form lagi
+                list_kelas = self.con.get_all_kelas()
+                list_ekskul = self.con.get_all_ekskul()
+                return render_template('admin/pengumuman_form_admin.html', 
+                                   action="Edit", 
+                                   pengumuman_data=current_form_data if 'current_form_data' in locals() else pengumuman_to_edit, 
+                                   list_kelas=list_kelas,
+                                   list_ekskul=list_ekskul,
+                                   id_pengumuman=id_pengumuman) # Penting untuk action form
+
+            # Untuk GET request
+            list_kelas = self.con.get_all_kelas()
+            list_ekskul = self.con.get_all_ekskul()
+            return render_template('admin/pengumuman_form_admin.html', 
+                                   action="Edit", 
+                                   pengumuman_data=pengumuman_to_edit, 
+                                   list_kelas=list_kelas,
+                                   list_ekskul=list_ekskul,
+                                   id_pengumuman=id_pengumuman)
+
+        @self.app.route('/admin/pengumuman/hapus/<int:id_pengumuman>', methods=['POST']) # Hanya POST untuk keamanan
+        @self.admin_login_required
+        def hapus_pengumuman_admin(id_pengumuman):
+            # Ambil judul untuk pesan flash sebelum dihapus
+            pengumuman_to_delete = self.con.get_pengumuman_by_id(id_pengumuman)
+            judul_pengumuman = pengumuman_to_delete['judul_pengumuman'] if pengumuman_to_delete else f"ID {id_pengumuman}"
+
+            if self.con.delete_pengumuman(id_pengumuman):
+                flash(f"Pengumuman '{judul_pengumuman}' berhasil dihapus.", "success")
+            else:
+                flash(f"Gagal menghapus pengumuman '{judul_pengumuman}'.", "danger")
+            return redirect(url_for('pengumuman_admin'))
+
+    # === Guru Route ===
 
     # --- Rute Dashboard Guru ---
         @self.app.route('/guru/dashboard')
