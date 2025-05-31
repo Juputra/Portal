@@ -638,6 +638,156 @@ class Config:
         finally:
             conn.close()
 
+    def add_materi_ekskul(self, data_materi):
+        # data_materi: {'id_ekskul': ..., 'judul_materi': ..., 'deskripsi_materi': ..., 
+        #               'tipe_konten': ..., 'path_konten_atau_link': ..., 
+        #               'isi_konten_teks': ..., 'id_pengunggah': ...}
+        conn = self._get_connection()
+        new_id = None
+        try:
+            with conn.cursor() as cursor:
+                sql = """INSERT INTO MateriEkskul 
+                         (id_ekskul, judul_materi, deskripsi_materi, tipe_konten, 
+                          path_konten_atau_link, isi_konten_teks, id_pengunggah)
+                         VALUES (%s, %s, %s, %s, %s, %s, %s)"""
+                cursor.execute(sql, (
+                    data_materi['id_ekskul'],
+                    data_materi['judul_materi'],
+                    data_materi.get('deskripsi_materi'),
+                    data_materi['tipe_konten'],
+                    data_materi.get('path_konten_atau_link'), # Akan berisi path file, URL, atau kode embed
+                    data_materi.get('isi_konten_teks'),      # Untuk tipe 'teks'
+                    data_materi['id_pengunggah']
+                ))
+                conn.commit()
+                new_id = cursor.lastrowid
+        except pymysql.MySQLError as e:
+            print(f"Error in add_materi_ekskul: {e}")
+            conn.rollback()
+        finally:
+            if conn.open: conn.close()
+        return new_id
+
+    def get_all_materi_ekskul(self):
+        # Mengambil semua materi, join dengan nama ekskul dan nama pengunggah
+        conn = self._get_connection()
+        materi_list = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT 
+                        me.id_materi_ekskul, me.judul_materi, me.tipe_konten, 
+                        me.tanggal_unggah, 
+                        e.nama_ekskul,
+                        p.nama_lengkap AS nama_pengunggah
+                    FROM MateriEkskul me
+                    JOIN Ekstrakurikuler e ON me.id_ekskul = e.id_ekskul
+                    JOIN Pengguna p ON me.id_pengunggah = p.id_pengguna
+                    ORDER BY me.tanggal_unggah DESC
+                """
+                cursor.execute(sql)
+                materi_list = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error in get_all_materi_ekskul: {e}")
+        finally:
+            if conn.open: conn.close()
+        return materi_list
+
+    def get_materi_ekskul_by_id(self, id_materi_ekskul):
+        conn = self._get_connection()
+        materi = None
+        try:
+            with conn.cursor() as cursor:
+                sql = """SELECT me.*, e.nama_ekskul 
+                         FROM MateriEkskul me
+                         JOIN Ekstrakurikuler e ON me.id_ekskul = e.id_ekskul
+                         WHERE me.id_materi_ekskul = %s"""
+                cursor.execute(sql, (id_materi_ekskul,))
+                materi = cursor.fetchone()
+        except pymysql.MySQLError as e:
+            print(f"Error in get_materi_ekskul_by_id: {e}")
+        finally:
+            if conn.open: conn.close()
+        return materi
+
+    def update_materi_ekskul(self, id_materi_ekskul, data_materi):
+        # data_materi: {'id_ekskul': ..., 'judul_materi': ..., 'deskripsi_materi': ..., 
+        #               'tipe_konten': ..., 'path_konten_atau_link': ..., 
+        #               'isi_konten_teks': ... , 'id_pengunggah': ... (opsional, mungkin tidak diupdate)}
+        # Perhatikan: id_pengunggah biasanya tidak diubah saat edit.
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                sql_parts = []
+                params = []
+
+                if 'id_ekskul' in data_materi: sql_parts.append("id_ekskul = %s"); params.append(data_materi['id_ekskul'])
+                if 'judul_materi' in data_materi: sql_parts.append("judul_materi = %s"); params.append(data_materi['judul_materi'])
+                if 'deskripsi_materi' in data_materi: sql_parts.append("deskripsi_materi = %s"); params.append(data_materi.get('deskripsi_materi'))
+                if 'tipe_konten' in data_materi: sql_parts.append("tipe_konten = %s"); params.append(data_materi['tipe_konten'])
+                
+                # Logika untuk path_konten_atau_link dan isi_konten_teks berdasarkan tipe_konten
+                if 'tipe_konten' in data_materi:
+                    if data_materi['tipe_konten'] in ['file', 'link', 'video_embed']:
+                        if 'path_konten_atau_link' in data_materi: # Hanya update jika ada path baru
+                            sql_parts.append("path_konten_atau_link = %s")
+                            params.append(data_materi.get('path_konten_atau_link'))
+                            sql_parts.append("isi_konten_teks = NULL") # Kosongkan field teks jika tipe file/link
+                            params.append(None) # Untuk placeholder query jika ada
+                    elif data_materi['tipe_konten'] == 'teks':
+                        if 'isi_konten_teks' in data_materi: # Hanya update jika ada teks baru
+                            sql_parts.append("isi_konten_teks = %s")
+                            params.append(data_materi.get('isi_konten_teks'))
+                            sql_parts.append("path_konten_atau_link = NULL") # Kosongkan field path/link jika tipe teks
+                            params.append(None) # Untuk placeholder query jika ada
+                else: # Jika tipe konten tidak berubah, tapi path atau isi berubah
+                    if 'path_konten_atau_link' in data_materi:
+                        sql_parts.append("path_konten_atau_link = %s")
+                        params.append(data_materi.get('path_konten_atau_link'))
+                    if 'isi_konten_teks' in data_materi:
+                        sql_parts.append("isi_konten_teks = %s")
+                        params.append(data_materi.get('isi_konten_teks'))
+
+
+                if not sql_parts:
+                    return True # Tidak ada yang diupdate
+
+                # Selalu tambahkan updated_at
+                sql_parts.append("updated_at = NOW()")
+                
+                sql = f"UPDATE MateriEkskul SET {', '.join(sql_parts)} WHERE id_materi_ekskul = %s"
+                params.append(id_materi_ekskul)
+                
+                cursor.execute(sql, tuple(params))
+                conn.commit()
+                return True
+        except pymysql.MySQLError as e:
+            print(f"Error in update_materi_ekskul: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn.open: conn.close()
+
+    def delete_materi_ekskul(self, id_materi_ekskul):
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                # Ambil detail materi dulu jika perlu menghapus file fisik
+                cursor.execute("SELECT tipe_konten, path_konten_atau_link FROM MateriEkskul WHERE id_materi_ekskul = %s", (id_materi_ekskul,))
+                materi_info = cursor.fetchone()
+
+                sql_delete = "DELETE FROM MateriEkskul WHERE id_materi_ekskul = %s"
+                cursor.execute(sql_delete, (id_materi_ekskul,))
+                conn.commit()
+                # Kembalikan info file jika ada, agar bisa dihapus di app.py
+                return materi_info 
+        except pymysql.MySQLError as e:
+            print(f"Error in delete_materi_ekskul: {e}")
+            conn.rollback()
+            return None
+        finally:
+            if conn.open: conn.close()
+
     # --- Attendance Management ---
     def save_absensi_ekskul(self, id_pendaftaran_ekskul, tanggal_kegiatan, status_kehadiran, dicatat_oleh_id, catatan=None, jam_kegiatan=None):
         """Menyimpan atau mengupdate data absensi."""

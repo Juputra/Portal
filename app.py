@@ -4,8 +4,13 @@ from functools import wraps
 from config import Config # Mengimpor kelas Config dari file config.py Anda
 import os
 from datetime import date
+from werkzeug.utils import secure_filename
 from datetime import datetime
 # import pdfkit # Belum digunakan
+
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 class Portal:
     def __init__(self):
@@ -14,6 +19,8 @@ class Portal:
         self.app.secret_key = 'ganti_dengan_kunci_rahasia_yang_kuat_dan_unik_98765!' 
         self.con = Config() # Membuat instance dari Config Anda
         self.routes()
+        self.app.config['UPLOAD_FOLDER'] = 'static/uploads/materi_ekskul' 
+
 
     def _login_required_for_role(self, target_role, message):
         def decorator(f):
@@ -540,6 +547,244 @@ class Portal:
             if ekskul_id_redirect:
                 return redirect(url_for('ekskul_detail_admin', ekskul_id=ekskul_id_redirect))
             return redirect(url_for('ekskul_admin')) # Fallback jika tidak ada redirect ID
+
+        # --- Manajemen Materi Ekskul (Admin) ---
+        @self.app.route('/admin/materi_ekskul')
+        @self.admin_login_required
+        def materi_ekskul_admin():
+            list_materi = self.con.get_all_materi_ekskul()
+            return render_template('admin/materi_ekskul_admin.html', list_materi=list_materi)
+
+        @self.app.route('/admin/materi_ekskul/tambah', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def tambah_materi_ekskul_admin():
+            if request.method == 'POST':
+                id_ekskul = request.form.get('id_ekskul')
+                judul_materi = request.form.get('judul_materi','').strip()
+                deskripsi_materi = request.form.get('deskripsi_materi','').strip()
+                tipe_konten = request.form.get('tipe_konten')
+                
+                path_konten_atau_link = None
+                isi_konten_teks = None
+
+                if not id_ekskul or not judul_materi or not tipe_konten:
+                    flash("Ekskul, Judul Materi, dan Tipe Konten wajib diisi.", "danger")
+                else:
+                    id_ekskul = int(id_ekskul)
+                    if tipe_konten == 'file':
+                        if 'file_konten' not in request.files:
+                            flash('Tidak ada bagian file yang dipilih.', 'danger')
+                        else:
+                            file = request.files['file_konten']
+                            if file.filename == '':
+                                flash('Tidak ada file yang dipilih untuk diunggah.', 'danger')
+                            # elif file and allowed_file(file.filename, self.app.config['ALLOWED_EXTENSIONS']): # Anda perlu implementasi allowed_file
+                            elif file: # Simplifikasi untuk contoh, tambahkan validasi ekstensi di produksi
+                                filename = secure_filename(file.filename)
+                                # Pastikan direktori upload ada
+                                upload_path_dir = os.path.join(self.app.root_path, self.app.config['UPLOAD_FOLDER'])
+                                if not os.path.exists(upload_path_dir):
+                                    os.makedirs(upload_path_dir)
+                                file.save(os.path.join(upload_path_dir, filename))
+                                path_konten_atau_link = filename # Simpan nama file, atau path relatif dari UPLOAD_FOLDER
+                                flash(f'File {filename} berhasil diunggah.', 'info')
+                            else:
+                                flash('Tipe file tidak diizinkan.', 'danger')
+                    elif tipe_konten in ['link', 'video_embed']:
+                        path_konten_atau_link = request.form.get('path_konten_atau_link_url','').strip()
+                        if not path_konten_atau_link:
+                             flash('URL/Link atau Kode Embed Video wajib diisi untuk tipe ini.', 'danger')
+                    elif tipe_konten == 'teks':
+                        isi_konten_teks = request.form.get('isi_konten_teks_area','').strip()
+                        if not isi_konten_teks:
+                            flash('Isi konten teks wajib diisi untuk tipe ini.', 'danger')
+                    
+                    # Lanjutkan penyimpanan jika path_konten_atau_link atau isi_konten_teks sudah valid (atau boleh kosong tergantung logika)
+                    # Misalnya, jika tipe file dan file gagal diupload, path_konten_atau_link akan None
+                    # Anda perlu logika validasi yang lebih baik di sini
+                    
+                    data_materi = {
+                        'id_ekskul': id_ekskul,
+                        'judul_materi': judul_materi,
+                        'deskripsi_materi': deskripsi_materi,
+                        'tipe_konten': tipe_konten,
+                        'path_konten_atau_link': path_konten_atau_link,
+                        'isi_konten_teks': isi_konten_teks,
+                        'id_pengunggah': session['user_id']
+                    }
+                    
+                    # Hanya simpan jika ada konten yang relevan (misal, file berhasil diupload atau link/teks diisi)
+                    # Logika ini perlu disempurnakan: jika file wajib, maka harus ada path_konten_atau_link
+                    save_to_db = False
+                    if tipe_konten == 'file' and path_konten_atau_link: save_to_db = True
+                    elif tipe_konten in ['link', 'video_embed'] and path_konten_atau_link: save_to_db = True
+                    elif tipe_konten == 'teks' and isi_konten_teks: save_to_db = True
+                    elif tipe_konten not in ['file', 'link', 'video_embed', 'teks']: # Tipe konten tidak valid
+                        flash('Tipe konten tidak valid.', 'danger')
+                        save_to_db = False
+
+
+                    if save_to_db:
+                        materi_id = self.con.add_materi_ekskul(data_materi)
+                        if materi_id:
+                            flash("Materi ekstrakurikuler berhasil ditambahkan!", "success")
+                            return redirect(url_for('materi_ekskul_admin'))
+                        else:
+                            flash("Gagal menambahkan materi. Periksa log server.", "danger")
+                    elif not path_konten_atau_link and not isi_konten_teks and tipe_konten in ['file', 'link', 'video_embed', 'teks']:
+                         flash("Konten untuk materi (file/link/teks) tidak boleh kosong.", "danger")
+
+
+            list_ekskul = self.con.get_all_ekskul()
+            return render_template('admin/materi_ekskul_form_admin.html', 
+                                   action="Tambah", 
+                                   materi_data=None,
+                                   list_ekskul=list_ekskul)
+        @self.app.route('/admin/materi_ekskul/edit/<int:id_materi_ekskul>', methods=['GET', 'POST'])
+        @self.admin_login_required
+        def edit_materi_ekskul_admin(id_materi_ekskul):
+            materi_data_lama = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
+            if not materi_data_lama:
+                flash("Materi ekstrakurikuler tidak ditemukan.", "danger")
+                return redirect(url_for('materi_ekskul_admin'))
+
+            if request.method == 'POST':
+                id_ekskul = request.form.get('id_ekskul')
+                judul_materi = request.form.get('judul_materi','').strip()
+                deskripsi_materi = request.form.get('deskripsi_materi','').strip()
+                tipe_konten = request.form.get('tipe_konten')
+                
+                # Data yang akan diupdate
+                data_to_update = {
+                    'id_ekskul': int(id_ekskul) if id_ekskul else materi_data_lama['id_ekskul'],
+                    'judul_materi': judul_materi if judul_materi else materi_data_lama['judul_materi'],
+                    'deskripsi_materi': deskripsi_materi, # Bisa string kosong
+                    'tipe_konten': tipe_konten if tipe_konten else materi_data_lama['tipe_konten']
+                }
+                
+                new_path_konten_atau_link = None
+                new_isi_konten_teks = None
+                delete_old_file = False
+                old_file_path = None
+
+                if data_to_update['tipe_konten'] == 'file':
+                    if 'file_konten' in request.files:
+                        file = request.files['file_konten']
+                        if file and file.filename != '': # Ada file baru diupload
+                            # Hapus file lama jika ada
+                            if materi_data_lama['tipe_konten'] == 'file' and materi_data_lama['path_konten_atau_link']:
+                                delete_old_file = True
+                                old_file_path = os.path.join(self.app.root_path, self.app.config['UPLOAD_FOLDER'], materi_data_lama['path_konten_atau_link'])
+                            
+                            filename = secure_filename(file.filename)
+                            upload_path_dir = os.path.join(self.app.root_path, self.app.config['UPLOAD_FOLDER'])
+                            if not os.path.exists(upload_path_dir): os.makedirs(upload_path_dir)
+                            file.save(os.path.join(upload_path_dir, filename))
+                            new_path_konten_atau_link = filename
+                            data_to_update['path_konten_atau_link'] = new_path_konten_atau_link
+                            data_to_update['isi_konten_teks'] = None # Pastikan isi_konten_teks di-null-kan
+                            flash(f'File baru {filename} berhasil diunggah.', 'info')
+                        # Jika tidak ada file baru diupload, gunakan path lama jika tipe konten tidak berubah dari file
+                        elif materi_data_lama['tipe_konten'] == 'file':
+                            data_to_update['path_konten_atau_link'] = materi_data_lama['path_konten_atau_link']
+                            data_to_update['isi_konten_teks'] = None
+                    # Jika tipe berubah ke file dari tipe lain, file wajib diupload
+                    elif materi_data_lama['tipe_konten'] != 'file' and ('file_konten' not in request.files or request.files['file_konten'].filename == ''):
+                         flash('File wajib diunggah jika tipe konten adalah file.', 'danger')
+                         # Kembalikan ke form dengan data yang sudah diisi
+                         list_ekskul = self.con.get_all_ekskul()
+                         return render_template('admin/materi_ekskul_form_admin.html', 
+                                               action="Edit", materi_data=request.form, # Kirim data form kembali
+                                               list_ekskul=list_ekskul, id_materi_ekskul=id_materi_ekskul)
+
+
+                elif data_to_update['tipe_konten'] in ['link', 'video_embed']:
+                    new_path_konten_atau_link = request.form.get('path_konten_atau_link_url','').strip()
+                    if not new_path_konten_atau_link:
+                        flash('URL/Link atau Kode Embed Video wajib diisi untuk tipe ini.', 'danger')
+                    else:
+                        data_to_update['path_konten_atau_link'] = new_path_konten_atau_link
+                        data_to_update['isi_konten_teks'] = None # Pastikan isi_konten_teks di-null-kan
+                        if materi_data_lama['tipe_konten'] == 'file' and materi_data_lama['path_konten_atau_link']:
+                            delete_old_file = True # Hapus file lama jika tipe berubah dari file
+                            old_file_path = os.path.join(self.app.root_path, self.app.config['UPLOAD_FOLDER'], materi_data_lama['path_konten_atau_link'])
+
+                elif data_to_update['tipe_konten'] == 'teks':
+                    new_isi_konten_teks = request.form.get('isi_konten_teks_area','').strip()
+                    if not new_isi_konten_teks:
+                         flash('Isi konten teks wajib diisi untuk tipe ini.', 'danger')
+                    else:
+                        data_to_update['isi_konten_teks'] = new_isi_konten_teks
+                        data_to_update['path_konten_atau_link'] = None # Pastikan path_konten_atau_link di-null-kan
+                        if materi_data_lama['tipe_konten'] == 'file' and materi_data_lama['path_konten_atau_link']:
+                            delete_old_file = True # Hapus file lama jika tipe berubah dari file
+                            old_file_path = os.path.join(self.app.root_path, self.app.config['UPLOAD_FOLDER'], materi_data_lama['path_konten_atau_link'])
+                
+                # Lakukan update hanya jika validasi konten spesifik tipe berhasil
+                # Anda perlu menambahkan logika validasi yang lebih kuat di sini
+                # Contoh sederhana:
+                is_content_valid = True
+                if data_to_update['tipe_konten'] == 'file' and not data_to_update.get('path_konten_atau_link'): is_content_valid = False
+                elif data_to_update['tipe_konten'] in ['link','video_embed'] and not data_to_update.get('path_konten_atau_link'): is_content_valid = False
+                elif data_to_update['tipe_konten'] == 'teks' and not data_to_update.get('isi_konten_teks'): is_content_valid = False
+
+
+                if is_content_valid and self.con.update_materi_ekskul(id_materi_ekskul, data_to_update):
+                    if delete_old_file and old_file_path:
+                        try:
+                            if os.path.exists(old_file_path):
+                                os.remove(old_file_path)
+                                flash('File lama berhasil dihapus.', 'info')
+                        except OSError as e:
+                            flash(f'Gagal menghapus file lama: {e}', 'warning')
+                    flash("Materi ekstrakurikuler berhasil diperbarui!", "success")
+                    return redirect(url_for('materi_ekskul_admin'))
+                elif not is_content_valid and not get_flashed_messages(): # Jika belum ada flash dari validasi di atas
+                     flash("Gagal memperbarui materi. Konten tidak valid atau tidak diisi.", "danger")
+                elif not get_flashed_messages():
+                     flash("Gagal memperbarui materi. Periksa log server.", "danger")
+                
+                # Jika gagal, kembalikan ke form dengan data yang sudah diisi
+                list_ekskul = self.con.get_all_ekskul()
+                # Kirim data form yang terakhir diinput, bukan data_to_update yang mungkin sudah dimodifikasi
+                form_data_kembali = dict(request.form) 
+                form_data_kembali['path_konten_atau_link'] = materi_data_lama.get('path_konten_atau_link') # Jaga path file lama jika tidak diubah
+                if materi_data_lama['tipe_konten'] == 'teks':
+                     form_data_kembali['isi_konten_teks'] = materi_data_lama.get('isi_konten_teks')
+
+                return render_template('admin/materi_ekskul_form_admin.html', 
+                                       action="Edit", materi_data=form_data_kembali, 
+                                       list_ekskul=list_ekskul, id_materi_ekskul=id_materi_ekskul)
+
+
+            list_ekskul = self.con.get_all_ekskul()
+            # Untuk form edit, materi_data_lama sudah berisi semua field dari database
+            # Termasuk path_konten_atau_link dan isi_konten_teks yang benar
+            return render_template('admin/materi_ekskul_form_admin.html', 
+                                   action="Edit", 
+                                   materi_data=materi_data_lama, 
+                                   list_ekskul=list_ekskul,
+                                   id_materi_ekskul=id_materi_ekskul)
+
+
+        @self.app.route('/admin/materi_ekskul/hapus/<int:id_materi_ekskul>', methods=['POST'])
+        @self.admin_login_required
+        def hapus_materi_ekskul_admin(id_materi_ekskul):
+            materi_info = self.con.delete_materi_ekskul(id_materi_ekskul)
+            if materi_info:
+                # Jika materi adalah file, hapus file fisiknya
+                if materi_info['tipe_konten'] == 'file' and materi_info['path_konten_atau_link']:
+                    try:
+                        file_path = os.path.join(self.app.root_path, self.app.config['UPLOAD_FOLDER'], materi_info['path_konten_atau_link'])
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            flash(f"File materi '{materi_info['path_konten_atau_link']}' berhasil dihapus dari server.", 'info')
+                    except OSError as e:
+                        flash(f"Gagal menghapus file fisik: {e}", "warning")
+                flash("Materi ekstrakurikuler berhasil dihapus!", "success")
+            else:
+                flash("Gagal menghapus materi ekstrakurikuler.", "danger")
+            return redirect(url_for('materi_ekskul_admin'))
 
         # --- Manajemen Pengumuman (Admin) ---
         @self.app.route('/admin/pengumuman')
