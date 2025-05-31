@@ -20,6 +20,8 @@ class Portal:
         self.con = Config() # Membuat instance dari Config Anda
         self.routes()
         self.app.config['UPLOAD_FOLDER'] = 'static/uploads/materi_ekskul' 
+        self.app.config['ALLOWED_EXTENSIONS'] = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'}
+
 
 
     def _login_required_for_role(self, target_role, message):
@@ -131,7 +133,8 @@ class Portal:
                                    jumlah_pengguna=counts.get('users',0), 
                                    jumlah_kelas=counts.get('kelas',0), 
                                    jumlah_ekskul=counts.get('ekskul',0), 
-                                   jumlah_pengumuman=counts.get('pengumuman',0))
+                                   jumlah_pengumuman=counts.get('pengumuman',0),
+                                   jumlah_materi_ekskul=counts.get('materi_ekskul',0))
 
         # --- Manajemen Pengguna (Admin) ---
         @self.app.route('/admin/users')

@@ -907,24 +907,32 @@ class Config:
 
     # --- General Utility ---
     def get_counts(self):
-        # Implementasi: SELECT COUNT(*) FROM Pengguna; SELECT COUNT(*) FROM Kelas; dst.
-        # Ini adalah contoh sederhana, Anda bisa membuatnya lebih efisien
         conn = self._get_connection()
-        counts = {'users': 0, 'kelas': 0, 'ekskul': 0, 'pengumuman':0}
+        # Tambahkan 'materi_ekskul' ke dictionary counts
+        counts = {'users': 0, 'kelas': 0, 'ekskul': 0, 'pengumuman': 0, 'materi_ekskul': 0} 
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) as total FROM Pengguna")
                 counts['users'] = cursor.fetchone()['total']
+                
                 cursor.execute("SELECT COUNT(*) as total FROM Kelas")
                 counts['kelas'] = cursor.fetchone()['total']
+                
                 cursor.execute("SELECT COUNT(*) as total FROM Ekstrakurikuler")
                 counts['ekskul'] = cursor.fetchone()['total']
-                cursor.execute("SELECT COUNT(*) as total FROM Pengumuman") # Query untuk hitung pengumuman
+                
+                cursor.execute("SELECT COUNT(*) as total FROM Pengumuman")
                 counts['pengumuman'] = cursor.fetchone()['total']
+                
+                # Query baru untuk menghitung total materi ekskul
+                cursor.execute("SELECT COUNT(*) as total FROM MateriEkskul") 
+                counts['materi_ekskul'] = cursor.fetchone()['total']
         except pymysql.MySQLError as e:
             print(f"Error getting counts: {e}")
+            # Anda mungkin ingin mengembalikan None atau dictionary kosong jika ada error
+            # return {'users': 0, 'kelas': 0, 'ekskul': 0, 'pengumuman': 0, 'materi_ekskul': 0}
         finally:
-            conn.close()
+            if conn.open: conn.close()
         return counts
     
     def get_tahun_ajaran_aktif(self):

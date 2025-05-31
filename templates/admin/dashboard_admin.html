@@ -5,45 +5,125 @@
 {% block content %}
     <h1>Selamat Datang di Dashboard Admin</h1>
     <p>Ini adalah halaman utama untuk administrasi portal.</p>
+    
     <div class="row">
-        <div class="col-md-4">
-            <div class="card text-bg-primary mb-3">
-                <div class="card-header">Total Pengguna</div>
+        <div class="col-xl-3 col-md-6 mb-4"> {# Pengguna #}
+            <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">{{ jumlah_pengguna }}</h5>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Pengguna</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ jumlah_pengguna }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i> {# Contoh ikon #}
+                        </div>
+                    </div>
+                    <a href="{{ url_for('users_admin') }}" class="stretched-link"></a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card text-bg-success mb-3">
-                <div class="card-header">Total Kelas</div>
+
+        <div class="col-xl-3 col-md-6 mb-4"> {# Kelas #}
+            <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">{{ jumlah_kelas }}</h5>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Kelas</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ jumlah_kelas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-school fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                     <a href="{{ url_for('kelas_admin') }}" class="stretched-link"></a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-             <div class="card text-bg-info mb-3">
-                <div class="card-header">Total Ekskul</div>
+
+        <div class="col-xl-3 col-md-6 mb-4"> {# Ekskul #}
+            <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">{{ jumlah_ekskul }}</h5>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Total Ekskul</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ jumlah_ekskul }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-puzzle-piece fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('ekskul_admin') }}" class="stretched-link"></a>
                 </div>
             </div>
         </div>
-        <div class="col-md-3"> {# Sesuaikan ukuran kolom jika perlu #}
-            <div class="card text-bg-warning mb-3"> {# Ganti warna jika mau #}
-                <div class="card-header">Total Pengumuman</div>
+        
+        <div class="col-xl-3 col-md-6 mb-4"> {# Pengumuman #}
+            <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">{{ jumlah_pengumuman }}</h5>
-                    <a href="{{ url_for('pengumuman_admin') }}" class="stretched-link"></a> {# Link tersembunyi untuk klik seluruh kartu #}
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Total Pengumuman</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ jumlah_pengumuman }}</div>
+                        </div>
+                         <div class="col-auto">
+                            <i class="fas fa-bullhorn fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('pengumuman_admin') }}" class="stretched-link"></a>
                 </div>
             </div>
         </div>
-    </div>
+
+        {# === KARTU BARU UNTUK MATERI EKSKUL === #}
+        <div class="col-xl-3 col-md-6 mb-4"> 
+            <div class="card border-left-danger shadow h-100 py-2"> {# Ganti warna jika mau, misal border-left-danger #}
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Total Materi Ekskul</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ jumlah_materi_ekskul }}</div>
+                        </div>
+                         <div class="col-auto">
+                            <i class="fas fa-book-open fa-2x text-gray-300"></i> {# Contoh ikon #}
+                        </div>
+                    </div>
+                    <a href="{{ url_for('materi_ekskul_admin') }}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        {# ====================================== #}
+
+    </div> {# Penutup untuk div class="row" kartu statistik #}
     <hr>
     <h4>Aksi Cepat:</h4>
-    <a href="{{ url_for('users_admin') }}" class="btn btn-secondary">Kelola Pengguna</a>
-    <a href="{{ url_for('kelas_admin') }}" class="btn btn-secondary">Kelola Kelas</a>
-    <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Kelola Ekstrakurikuler</a>
-    <a href="{{ url_for('pengumuman_admin') }}" class="btn btn-secondary">Kelola Pengumuman</a>
+    <a href="{{ url_for('users_admin') }}" class="btn btn-secondary mb-2 me-2">Kelola Pengguna</a>
+    <a href="{{ url_for('kelas_admin') }}" class="btn btn-secondary mb-2 me-2">Kelola Kelas</a>
+    <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary mb-2 me-2">Kelola Ekstrakurikuler</a>
+    <a href="{{ url_for('pengumuman_admin') }}" class="btn btn-info mb-2 me-2">Kelola Pengumuman</a> 
+    {# === TOMBOL BARU UNTUK MATERI EKSKUL === #}
+    <a href="{{ url_for('materi_ekskul_admin') }}" class="btn btn-success mb-2 me-2">Kelola Materi Ekskul</a> 
+    {# ====================================== #}
+{% endblock %}
+
+{% block scripts_extra %}
+{# Jika Anda menggunakan Font Awesome untuk ikon, pastikan linknya ada di layout_admin.html atau di sini #}
+{# <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> #}
+{# Atau jika Anda sudah memilikinya di layout_admin.html, tidak perlu di sini lagi #}
+<script>
+// Jika Anda ingin menggunakan ikon Font Awesome dari CDN, Anda bisa menambahkan script ini
+// Namun, cara terbaik adalah melink CSS-nya di <head> pada layout_admin.html
+// (function() {
+// var css = document.createElement('link');
+// css.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+// css.rel = 'stylesheet';
+// css.type = 'text/css';
+// document.getElementsByTagName('head')[0].appendChild(css);
+// })();
+</script>
 {% endblock %}
