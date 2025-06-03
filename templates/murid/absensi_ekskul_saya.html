@@ -1,0 +1,72 @@
+{% extends "murid/layout_murid.html" %} {% block title %}Rekap Absensi Ekskul Saya{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Rekap Absensi Ekstrakurikuler Saya</h2>
+    <p>Halo, {{ nama_murid }}! Berikut adalah rekap absensi Anda untuk tahun ajaran {{ tahun_ajaran_aktif }}.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if attendance_by_ekskul %}
+        {% for nama_ekskul, records in attendance_by_ekskul.items() %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Ekstrakurikuler: {{ nama_ekskul }}</h4>
+                </div>
+                <div class="card-body">
+                    {% if records %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Tanggal Kegiatan</th>
+                                        <th>Jam Mulai</th>
+                                        <th>Status Kehadiran</th>
+                                        <th>Catatan</th>
+                                        <th>Dicatat Oleh</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in records %}
+                                    <tr>
+                                        <td>{{ record.tanggal_kegiatan.strftime('%d %B %Y') if record.tanggal_kegiatan else 'N/A' }}</td>
+                                        <td>{{ record.jam_mulai_kegiatan_str }}</td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if record.status_kehadiran == 'Hadir' %} bg-success
+                                                {% elif record.status_kehadiran == 'Izin' %} bg-info text-dark
+                                                {% elif record.status_kehadiran == 'Sakit' %} bg-warning text-dark
+                                                {% elif record.status_kehadiran == 'Alfa' %} bg-danger
+                                                {% else %} bg-secondary {% endif %}">
+                                                {{ record.status_kehadiran }}
+                                            </span>
+                                        </td>
+                                        <td>{{ record.catatan_absensi | default('-', true) }}</td>
+                                        <td>{{ record.nama_pencatat | default('Sistem', true) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Belum ada catatan absensi untuk ekskul ini.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info mt-3" role="alert">
+            Belum ada catatan absensi ekstrakurikuler untuk Anda pada tahun ajaran ini.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

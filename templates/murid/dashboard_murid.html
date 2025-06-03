@@ -1,0 +1,112 @@
+{% extends "murid/layout_murid.html" %} {% block title %}Dashboard Murid{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Dashboard Murid</h2>
+    <p>Selamat datang kembali, <strong>{{ nama_murid }}!</strong></p>
+    <p>Tahun Ajaran Aktif: <strong>{{ tahun_ajaran_aktif }}</strong></p>
+
+    <hr>
+
+    <div class="mb-4">
+        <h3><i class="fas fa-bullhorn"></i> Pengumuman Terbaru</h3>
+        {% if pengumuman_list %}
+            {% for pengumuman in pengumuman_list %}
+                <div class="card mb-2 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ pengumuman.judul_pengumuman }}</h5>
+                        <p class="card-text">{{ pengumuman.isi_pengumuman | safe }}</p>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                Dipublikasikan pada: {{ pengumuman.tanggal_publikasi.strftime('%d %B %Y, %H:%M') if pengumuman.tanggal_publikasi else 'N/A' }}
+                                oleh: {{ pengumuman.nama_pembuat | default('Admin') }}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                Tidak ada pengumuman baru saat ini.
+            </div>
+        {% endif %}
+    </div>
+
+    <hr>
+
+    <div class="mb-4">
+        <h3><i class="fas fa-running"></i> Ekstrakurikuler Saya</h3>
+        {% if ekskul_diikuti_list %}
+            <div class="row">
+                {% for ekskul in ekskul_diikuti_list %}
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">{{ ekskul.nama_ekskul }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Pembina:</strong> {{ ekskul.nama_pembina | default('Belum ada') }}</p>
+                            <p><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ditentukan') }}</p>
+                            <p><strong>Lokasi:</strong> {{ ekskul.lokasi | default('Belum ditentukan') }}</p>
+                            <p><strong>Status Pendaftaran:</strong> 
+                                <span class="badge 
+                                    {% if ekskul.status_pendaftaran == 'Disetujui' or ekskul.status_pendaftaran == 'Terdaftar' %} bg-success 
+                                    {% elif ekskul.status_pendaftaran == 'Menunggu Persetujuan' %} bg-warning text-dark
+                                    {% else %} bg-secondary {% endif %}">
+                                    {{ ekskul.status_pendaftaran }}
+                                </span>
+                            </p>
+
+                            {% if ekskul.nama_ekskul in materi_per_ekskul and materi_per_ekskul[ekskul.nama_ekskul] %}
+                                <h6 class="mt-3">Materi:</h6>
+                                <ul class="list-group list-group-flush">
+                                    {% for materi in materi_per_ekskul[ekskul.nama_ekskul][:3] %} {# Tampilkan 3 materi terbaru saja #}
+                                        <li class="list-group-item">
+                                            <strong>{{ materi.judul_materi }}</strong> ({{ materi.tipe_konten }})
+                                            <p><small>{{ materi.deskripsi_materi | truncate(50) }}</small></p>
+                                            {% if materi.tipe_konten == 'file' and materi.path_konten_atau_link %}
+                                                <a href="{{ url_for('static', filename='uploads/materi_ekskul/' + materi.path_konten_atau_link) }}" target="_blank" class="btn btn-sm btn-outline-info">Lihat File</a>
+                                            {% elif materi.tipe_konten == 'link' and materi.path_konten_atau_link %}
+                                                <a href="{{ materi.path_konten_atau_link }}" target="_blank" class="btn btn-sm btn-outline-info">Buka Link</a>
+                                            {% elif materi.tipe_konten == 'video_embed' and materi.path_konten_atau_link %}
+                                                 <div class="embed-responsive embed-responsive-16by9 mt-2">
+                                                    {{ materi.path_konten_atau_link | safe }}
+                                                </div>
+                                            {% elif materi.tipe_konten == 'teks' and materi.isi_konten_teks %}
+                                                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#materiTeks{{materi.id_materi_ekskul}}" aria-expanded="false" aria-controls="materiTeks{{materi.id_materi_ekskul}}">
+                                                    Lihat Teks
+                                                </button>
+                                                <div class="collapse mt-2" id="materiTeks{{materi.id_materi_ekskul}}">
+                                                    <div class="card card-body small">
+                                                        {{ materi.isi_konten_teks | safe }}
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                    {% if materi_per_ekskul[ekskul.nama_ekskul]|length > 3 %}
+                                        <li class="list-group-item text-center">
+                                            <small><a href="#">Lihat semua materi untuk {{ ekskul.nama_ekskul }}...</a></small> {# Link ke halaman detail materi ekskul #}
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted_"><small>Belum ada materi untuk ekskul ini.</small></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                Anda belum mengikuti ekstrakurikuler apapun pada tahun ajaran ini.
+                <a href="{{ url_for('lihat_ekskul_murid') }}" class="alert-link">Lihat daftar ekskul tersedia.</a>
+            </div>
+        {% endif %}
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</div>
+{% endblock %}

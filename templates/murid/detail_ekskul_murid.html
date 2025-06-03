@@ -1,0 +1,90 @@
+{% extends "murid/layout_murid.html" %}
+
+{% block title %}Detail Ekstrakurikuler: {{ ekskul.nama_ekskul }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard_murid') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('ekskul_saya_murid') }}">Ekskul Saya</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ ekskul.nama_ekskul }}</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h2 class="card-title mb-0">{{ ekskul.nama_ekskul }}</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>Kategori:</strong> {{ ekskul.kategori | default('Tidak ada kategori', true) }}</p>
+            <p><strong>Pembina:</strong> {{ ekskul.nama_guru_pembina | default('Belum ada pembina', true) }}</p>
+            <p><strong>Deskripsi:</strong></p>
+            <div style="white-space: pre-wrap;">{{ ekskul.deskripsi | default('Tidak ada deskripsi.', true) }}</div>
+            <hr>
+            <p><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Jadwal belum ditentukan.', true) }}</p>
+            <p><strong>Lokasi:</strong> {{ ekskul.lokasi | default('Lokasi belum ditentukan.', true) }}</p>
+            <p><strong>Kuota Maksimal:</strong> 
+                {% if ekskul.kuota_maksimal is not none %}
+                    {{ ekskul.kuota_maksimal }} peserta
+                {% else %}
+                    Tidak terbatas
+                {% endif %}
+            </p>
+            <p><strong>Status Ekskul:</strong> 
+                <span class="badge {% if ekskul.status_aktif %}bg-success{% else %}bg-danger{% endif %}">
+                    {{ "Aktif" if ekskul.status_aktif else "Tidak Aktif" }}
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h3><i class="fas fa-book-open"></i> Materi Ekstrakurikuler</h3>
+        {% if materi_list %}
+            {% for materi in materi_list %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>{{ materi.judul_materi }}</strong> (Tipe: {{ materi.tipe_konten }})
+                    </div>
+                    <div class="card-body">
+                        {% if materi.deskripsi_materi %}
+                            <p>{{ materi.deskripsi_materi }}</p>
+                        {% endif %}
+
+                        {% if materi.tipe_konten == 'file' and materi.path_konten_atau_link %}
+                            <a href="{{ url_for('static', filename='uploads/materi_ekskul/' + materi.path_konten_atau_link) }}" target="_blank" class="btn btn-sm btn-primary">
+                                <i class="fas fa-download"></i> Unduh/Lihat File: {{ materi.path_konten_atau_link }}
+                            </a>
+                        {% elif materi.tipe_konten == 'link' and materi.path_konten_atau_link %}
+                            <a href="{{ materi.path_konten_atau_link }}" target="_blank" class="btn btn-sm btn-info">
+                                <i class="fas fa-external-link-alt"></i> Buka Link
+                            </a>
+                        {% elif materi.tipe_konten == 'video_embed' and materi.path_konten_atau_link %}
+                            <div class="embed-responsive embed-responsive-16by9 mt-2">
+                                {{ materi.path_konten_atau_link | safe }}
+                            </div>
+                        {% elif materi.tipe_konten == 'teks' and materi.isi_konten_teks %}
+                             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#materiTeksDetail{{materi.id_materi_ekskul}}" aria-expanded="false" aria-controls="materiTeksDetail{{materi.id_materi_ekskul}}">
+                                <i class="fas fa-align-left"></i> Tampilkan Isi Teks
+                            </button>
+                            <div class="collapse mt-2" id="materiTeksDetail{{materi.id_materi_ekskul}}">
+                                <div class="card card-body bg-light small" style="white-space: pre-wrap;">
+                                    {{ materi.isi_konten_teks | safe }}
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="text-muted"><small>Konten tidak tersedia atau tidak dapat ditampilkan.</small></p>
+                        {% endif %}
+                        <p class="card-text mt-2"><small class="text-muted">Diunggah oleh: {{ materi.nama_pengunggah | default('N/A') }} pada {{ materi.tanggal_unggah.strftime('%d %B %Y, %H:%M') if materi.tanggal_unggah else 'N/A' }}</small></p>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-light" role="alert">
+                Belum ada materi untuk ekstrakurikuler ini.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

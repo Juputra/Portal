@@ -1,0 +1,85 @@
+{% extends "admin/layout_admin.html" %} {% block title %}{{ judul_halaman | default('Kelola Pendaftaran Ekskul') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ judul_halaman | default('Kelola Pendaftaran Ekskul') }}</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if pending_registrations %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Tanggal Daftar</th>
+                    <th>Nama Murid</th>
+                    <th>No. Induk</th>
+                    <th>Ekskul</th>
+                    <th>Pembina</th>
+                    <th>Tahun Ajaran</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reg in pending_registrations %}
+                <tr>
+                    <td>{{ reg.tanggal_pendaftaran.strftime('%d-%m-%Y %H:%M') if reg.tanggal_pendaftaran else 'N/A' }}</td>
+                    <td>{{ reg.nama_murid }}</td>
+                    <td>{{ reg.nomor_induk_murid | default('N/A') }}</td>
+                    <td>{{ reg.nama_ekskul }}</td>
+                    <td>{{ reg.nama_pembina | default('N/A') }}</td>
+                    <td>{{ reg.tahun_ajaran }}</td>
+                    <td>
+                        <form action="{{ url_for('setujui_pendaftaran_admin', pendaftaran_id=reg.id_pendaftaran_ekskul) }}" method="POST" class="d-inline" onsubmit="return confirm('Setujui pendaftaran ini?')">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="fas fa-check"></i> Setujui
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#tolakModal{{ reg.id_pendaftaran_ekskul }}">
+                            <i class="fas fa-times"></i> Tolak
+                        </button>
+
+                        <div class="modal fade" id="tolakModal{{ reg.id_pendaftaran_ekskul }}" tabindex="-1" aria-labelledby="tolakModalLabel{{ reg.id_pendaftaran_ekskul }}" aria-hidden="true">
+                          <div class="modal-dialog">
+                            <div class="modal-content">
+                              <form action="{{ url_for('tolak_pendaftaran_admin', pendaftaran_id=reg.id_pendaftaran_ekskul) }}" method="POST">
+                                <div class="modal-header">
+                                  <h5 class="modal-title" id="tolakModalLabel{{ reg.id_pendaftaran_ekskul }}">Tolak Pendaftaran: {{ reg.nama_murid }} - {{ reg.nama_ekskul }}</h5>
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                  <div class="mb-3">
+                                    <label for="alasan_penolakan_{{ reg.id_pendaftaran_ekskul }}" class="form-label">Alasan Penolakan (Opsional):</label>
+                                    <textarea class="form-control" id="alasan_penolakan_{{ reg.id_pendaftaran_ekskul }}" name="alasan_penolakan" rows="3"></textarea>
+                                  </div>
+                                </div>
+                                <div class="modal-footer">
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                  <button type="submit" class="btn btn-danger">Ya, Tolak</button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        Tidak ada pendaftaran yang menunggu persetujuan saat ini.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

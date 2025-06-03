@@ -1,0 +1,65 @@
+{% extends "murid/layout_murid.html" %} {% block title %}Daftar Ekstrakurikuler{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Daftar Ekstrakurikuler - Tahun Ajaran {{ tahun_ajaran_aktif }}</h2>
+    <p>Halo, {{ nama_murid }}! Pilih ekstrakurikuler yang kamu minati.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if list_ekskul %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for ekskul in list_ekskul %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        {% if ekskul.url_logo_ekskul %}
+                            {% endif %}
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-primary">{{ ekskul.nama_ekskul }}</h5>
+                            <p class="card-text mb-1"><small class="text-muted">Kategori: {{ ekskul.kategori | default('Umum', true) }}</small></p>
+                            <p class="card-text mb-1"><strong>Pembina:</strong> {{ ekskul.nama_guru_pembina | default('N/A', true) }}</p>
+                            <p class="card-text mb-1"><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ditentukan', true) }}</p>
+                            <p class="card-text mb-1"><strong>Lokasi:</strong> {{ ekskul.lokasi | default('N/A', true) }}</p>
+                            <p class="card-text">
+                                <strong>Kuota:</strong> 
+                                {% if ekskul.kuota_maksimal is not none %}
+                                    {{ ekskul.kuota_maksimal }} peserta
+                                    {% else %}
+                                    Tidak terbatas
+                                {% endif %}
+                            </p>
+                            <p class="card-text small">{{ ekskul.deskripsi | truncate(120, true) }}</p>
+                            
+                            <div class="mt-auto">
+                                {% if ekskul.id_ekskul in ids_ekskul_sudah_diikuti %}
+                                    <button type="button" class="btn btn-secondary w-100" disabled><i class="fas fa-check-circle"></i> Sudah Terdaftar</button>
+                                {% elif not ekskul.status_aktif %}
+                                     <button type="button" class="btn btn-outline-secondary w-100" disabled>Tidak Aktif</button>
+                                {% else %}
+                                    <form action="{{ url_for('daftar_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mendaftar ekskul {{ ekskul.nama_ekskul }}?');">
+                                        <input type="hidden" name="tahun_ajaran" value="{{ tahun_ajaran_aktif }}">
+                                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-user-plus"></i> Daftar Sekarang</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info mt-3" role="alert">
+            Belum ada ekstrakurikuler yang tersedia untuk didaftarkan saat ini.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

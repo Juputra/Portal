@@ -3,9 +3,10 @@ from werkzeug.security import check_password_hash # generate_password_hash sekar
 from functools import wraps
 from config import Config # Mengimpor kelas Config dari file config.py Anda
 import os
-from datetime import date
+from datetime import date, datetime, timedelta
+import datetime
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from collections import defaultdict
 # import pdfkit # Belum digunakan
 
 def allowed_file(filename, allowed_extensions):
@@ -829,6 +830,62 @@ class Portal:
             else:
                 flash("Gagal menghapus materi ekstrakurikuler.", "danger")
             return redirect(url_for('materi_ekskul_admin'))
+        
+        @self.app.route('/admin/ekskul/pendaftaran')
+        @self.admin_login_required
+        def kelola_pendaftaran_ekskul_admin():
+                # Admin melihat semua pendaftaran yang menunggu persetujuan
+                pending_registrations = self.con.get_pending_registrations_detailed()
+                return render_template('admin/kelola_pendaftaran_ekskul.html', 
+                                       pending_registrations=pending_registrations,
+                                       judul_halaman="Kelola Semua Pendaftaran Ekskul")
+
+        @self.app.route('/admin/ekskul/pendaftaran/<int:pendaftaran_id>/setujui', methods=['POST'])
+        @self.admin_login_required
+        def setujui_pendaftaran_admin(pendaftaran_id):
+                catatan = f"Disetujui oleh Admin: {session.get('nama_lengkap')}"
+                # Panggil metode yang sudah ada di Config.py
+                # Metode ini akan mengecek kuota juga sebelum menyetujui
+                # Jika register_student_for_ekskul sudah handle semua, Anda bisa panggil itu
+                # atau pastikan update_ekskul_registration_status juga cek kuota.
+                
+                # Untuk menyederhanakan, kita langsung update status. Pengecekan kuota IDEALNYA
+                # ada di sini atau di metode update_ekskul_registration_status jika diubah
+                # untuk kasus 'Disetujui'.
+
+                # Cek kuota sebelum menyetujui
+                pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id) # Buat metode ini jika belum ada
+                if not pendaftaran_info:
+                    flash("Data pendaftaran tidak ditemukan.", "danger")
+                    return redirect(url_for('kelola_pendaftaran_ekskul_admin'))
+
+                ekskul_info = self.con.get_ekskul_by_id(pendaftaran_info['id_ekskul'])
+                if ekskul_info and ekskul_info.get('kuota_maksimal') is not None:
+                    jumlah_peserta_aktif = self.con.count_active_members_ekskul(pendaftaran_info['id_ekskul'], pendaftaran_info['tahun_ajaran']) # Buat metode ini
+                    if jumlah_peserta_aktif >= ekskul_info['kuota_maksimal']:
+                        flash(f"Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh. Pendaftaran tidak dapat disetujui.", "warning")
+                        # Otomatis tolak jika kuota penuh saat approval
+                        self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', f"Ditolak otomatis karena kuota penuh saat approval oleh Admin: {session.get('nama_lengkap')}")
+                        return redirect(request.referrer or url_for('kelola_pendaftaran_ekskul_admin'))
+
+
+                if self.con.update_ekskul_registration_status(pendaftaran_id, 'Disetujui', catatan):
+                    flash('Pendaftaran berhasil disetujui.', 'success')
+                else:
+                    flash('Gagal menyetujui pendaftaran.', 'danger')
+                return redirect(request.referrer or url_for('kelola_pendaftaran_ekskul_admin')) # Kembali ke halaman sebelumnya
+
+        @self.app.route('/admin/ekskul/pendaftaran/<int:pendaftaran_id>/tolak', methods=['POST'])
+        @self.admin_login_required
+        def tolak_pendaftaran_admin(pendaftaran_id):
+                # Anda bisa menambahkan field alasan penolakan di form jika mau
+                alasan = request.form.get('alasan_penolakan', 'Ditolak oleh Admin.')
+                catatan = f"{alasan} (Admin: {session.get('nama_lengkap')})"
+                if self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', catatan):
+                    flash('Pendaftaran berhasil ditolak.', 'success')
+                else:
+                    flash('Gagal menolak pendaftaran.', 'danger')
+                return redirect(request.referrer or url_for('kelola_pendaftaran_ekskul_admin'))
 
         # --- Manajemen Pengumuman (Admin) ---
         @self.app.route('/admin/pengumuman')
@@ -1232,12 +1289,361 @@ class Portal:
             return redirect(url_for('dashboard_guru')) # Fallback
 
         # --- Rute Dashboard Murid (Placeholder) ---
-        @self.app.route('/murid/dashboard') # COPAS DARI SEBELUMNYA
-        @self.murid_login_required 
-        def dashboard_murid():
-            return render_template('murid/dashboard_murid.html', nama_murid=session.get('nama_lengkap'))
+        @self.app.route('/registrasi-murid', methods=['GET'])
+        def form_registrasi_murid():
+            # Jika pengguna sudah login, arahkan ke dashboardnya
+            if 'user_id' in session:
+                peran = session.get('peran')
+                if peran == 'admin': return redirect(url_for('dashboard_admin'))
+                if peran == 'guru': return redirect(url_for('dashboard_guru'))
+                if peran == 'murid': return redirect(url_for('dashboard_murid'))
+                # Jika peran tidak dikenal, fallback ke logout agar bisa registrasi/login ulang
+                session.clear()
+                return redirect(url_for('login'))
+            return render_template('murid/register_murid.html')
 
+        @self.app.route('/registrasi-murid/submit', methods=['POST'])
+        def submit_registrasi_murid():
+            if 'user_id' in session: # Seharusnya tidak bisa diakses jika sudah login
+                return redirect(url_for('index'))
 
+            nama_lengkap = request.form.get('nama_lengkap', '').strip()
+            nomor_induk = request.form.get('nomor_induk', '').strip()
+            email = request.form.get('email', '').strip()
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '') # Jangan strip password, bisa ada spasi sengaja
+            confirm_password = request.form.get('confirm_password', '')
+
+            # Validasi dasar
+            if not all([nama_lengkap, nomor_induk, email, username, password, confirm_password]):
+                flash('Semua field yang ditandai bintang (*) wajib diisi.', 'danger')
+                return render_template('murid/register_murid.html', **request.form) # Kembalikan data form
+
+            if password != confirm_password:
+                flash('Password dan Konfirmasi Password tidak cocok.', 'danger')
+                return render_template('murid/register_murid.html', **request.form)
+            
+            # Cek apakah username sudah ada
+            if self.con.get_user_by_username(username):
+                flash(f"Username '{username}' sudah digunakan. Silakan pilih username lain.", 'danger')
+                return render_template('murid/register_murid.html', **request.form)
+
+            # Opsional: Cek apakah email sudah ada
+            # if self.con.get_user_by_email(email): # Anda mungkin perlu buat metode ini di Config.py
+            #     flash(f"Email '{email}' sudah terdaftar.", 'danger')
+            #     return render_template('register_murid.html', **request.form)
+
+            # Opsional: Cek apakah Nomor Induk sudah ada (untuk peran murid)
+            # if self.con.get_user_by_nomor_induk_and_role(nomor_induk, 'murid'): # Buat metode ini di Config.py
+            #     flash(f"Nomor Induk '{nomor_induk}' sudah terdaftar.", 'danger')
+            #     return render_template('register_murid.html', **request.form)
+
+            # Jika semua validasi lolos, siapkan data untuk disimpan
+            user_data = {
+                'username': username,
+                'password': password, # Password akan di-hash di Config.add_user
+                'nama_lengkap': nama_lengkap,
+                'email': email,
+                'peran': 'murid', # Peran sudah pasti 'murid'
+                'nomor_induk': nomor_induk,
+                'status_aktif': True # Bisa diatur False jika butuh approval admin/verifikasi email
+            }
+
+            user_id = self.con.add_user(user_data) # Panggil metode add_user dari Config Anda
+
+            if user_id:
+                flash(f"Registrasi berhasil! Selamat datang, {nama_lengkap}. Silakan login.", 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Registrasi gagal. Terjadi kesalahan pada server. Silakan coba lagi nanti.', 'danger')
+                return render_template('murid/register_murid.html', **request.form)
+
+        @self.app.route('/murid/dashboard')
+        @self.murid_login_required # Menggunakan decorator yang sudah ada
+        def dashboard_murid(): # Tidak perlu 'self' jika didefinisikan di dalam routes()
+            murid_id = session.get('user_id')
+            nama_murid = session.get('nama_lengkap')
+
+            # Dapatkan tahun ajaran aktif
+            # Pastikan metode get_tahun_ajaran_aktif() ada di Config.py Anda
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() 
+            if not tahun_ajaran_aktif:
+                flash("Tidak dapat menentukan tahun ajaran aktif. Hubungi admin.", "warning")
+                # Anda bisa memberikan nilai default atau menghentikan proses di sini
+                # tergantung bagaimana Anda ingin menanganinya.
+                # Untuk contoh ini, kita biarkan None jika tidak ada.
+                # Atau: tahun_ajaran_aktif = "TAHUN_DEFAULT"
+
+            # 1. Ambil Pengumuman untuk murid
+            # Pastikan metode get_pengumuman_for_role ada di Config.py Anda
+            pengumuman_list = self.con.get_pengumuman_for_role('murid', limit=5)
+
+            # 2. Ambil Ekskul yang diikuti murid (beserta detailnya)
+            ekskul_diikuti_list = [] # Default ke list kosong
+            if murid_id and tahun_ajaran_aktif:
+                # Pastikan metode get_ekskul_diikuti_murid_detail ada di Config.py Anda
+                ekskul_diikuti_list = self.con.get_ekskul_diikuti_murid_detail(murid_id, tahun_ajaran_aktif)
+
+            # 3. Ambil Materi untuk setiap ekskul yang diikuti
+            materi_per_ekskul = {} 
+            if ekskul_diikuti_list:
+                for ekskul in ekskul_diikuti_list:
+                    # Pastikan metode get_materi_by_ekskul_id ada di Config.py Anda
+                    materi_list_untuk_ekskul_ini = self.con.get_materi_by_ekskul_id(ekskul['id_ekskul'])
+                    if materi_list_untuk_ekskul_ini:
+                        materi_per_ekskul[ekskul['nama_ekskul']] = materi_list_untuk_ekskul_ini
+                    else:
+                        materi_per_ekskul[ekskul['nama_ekskul']] = []
+
+            return render_template('murid/dashboard_murid.html',
+                                   nama_murid=nama_murid,
+                                   pengumuman_list=pengumuman_list,
+                                   ekskul_diikuti_list=ekskul_diikuti_list,
+                                   materi_per_ekskul=materi_per_ekskul,
+                                   tahun_ajaran_aktif=tahun_ajaran_aktif)
+        @self.app.route('/murid/ekskul', methods=['GET'])
+        @self.murid_login_required
+        def lihat_ekskul_murid():
+            murid_id = session.get('user_id')
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
+
+            list_ekskul_tersedia = self.con.get_all_ekskul() # Ambil semua ekskul
+
+            ekskul_sudah_diikuti = []
+            if hasattr(self.con, 'get_ekskul_diikuti_murid_detail'):
+                ekskul_sudah_diikuti = self.con.get_ekskul_diikuti_murid_detail(murid_id, tahun_ajaran_aktif)
+
+            ids_ekskul_sudah_diikuti = [e['id_ekskul'] for e in ekskul_sudah_diikuti] if ekskul_sudah_diikuti else []
+
+            return render_template('murid/lihat_ekskul.html', 
+                                   list_ekskul=list_ekskul_tersedia,
+                                   ids_ekskul_sudah_diikuti=ids_ekskul_sudah_diikuti,
+                                   tahun_ajaran_aktif=tahun_ajaran_aktif,
+                                   nama_murid=session.get('nama_lengkap'))
+
+        # Rute untuk murid mendaftar ke ekskul
+        @self.app.route('/murid/ekskul/<int:ekskul_id>/daftar', methods=['POST'])
+        @self.murid_login_required
+        def daftar_ekskul_murid(ekskul_id):
+            murid_id = session.get('user_id')
+            nama_murid = session.get('nama_lengkap')
+            tahun_ajaran = request.form.get('tahun_ajaran')
+
+            if not tahun_ajaran:
+                flash('Tahun ajaran tidak valid.', 'danger')
+                return redirect(url_for('lihat_ekskul_murid'))
+
+            catatan_pendaftar = f"Didaftarkan oleh murid: {nama_murid}"
+            status_awal_pendaftaran = 'Menunggu Persetujuan' # Atau 'Terdaftar'
+
+            hasil_pendaftaran = self.con.register_student_for_ekskul(
+                murid_id, ekskul_id, tahun_ajaran,
+                status_pendaftaran=status_awal_pendaftaran,
+                catatan_pendaftar=catatan_pendaftar
+            )
+
+            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+            nama_ekskul = ekskul_info['nama_ekskul'] if ekskul_info else f"ID {ekskul_id}"
+
+            if isinstance(hasil_pendaftaran, int):
+                flash(f"Anda berhasil mendaftar untuk ekstrakurikuler '{nama_ekskul}'. Status: {status_awal_pendaftaran}.", 'success')
+            elif hasil_pendaftaran == "KUOTA_PENUH":
+                flash(f"Maaf, kuota untuk ekstrakurikuler '{nama_ekskul}' sudah penuh.", 'warning')
+            elif hasil_pendaftaran == "SUDAH_TERDAFTAR":
+                flash(f"Anda sudah terdaftar atau sedang menunggu persetujuan untuk ekstrakurikuler '{nama_ekskul}' pada tahun ajaran ini.", 'warning')
+            elif hasil_pendaftaran == "EKSKUL_NOT_FOUND":
+                flash(f"Ekstrakurikuler '{nama_ekskul}' tidak ditemukan atau tidak aktif.", 'danger')
+            else: 
+                flash(f"Gagal mendaftar untuk ekstrakurikuler '{nama_ekskul}'. Terjadi kesalahan.", 'danger')
+
+            return redirect(url_for('lihat_ekskul_murid'))
+
+        @self.app.route('/murid/ekskul/saya')
+        @self.murid_login_required
+        def ekskul_saya_murid():
+            murid_id = session.get('user_id')
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
+            
+            data_ekskul_diikuti = []
+            if hasattr(self.con, 'get_pendaftaran_by_murid'):
+                all_my_registrations = self.con.get_pendaftaran_by_murid(murid_id, tahun_ajaran_aktif)
+                if all_my_registrations:
+                    for reg in all_my_registrations:
+                        detail_ekskul = self.con.get_ekskul_by_id(reg['id_ekskul']) 
+                        if detail_ekskul:
+                            data_ekskul_diikuti.append({
+                                'id_ekskul': detail_ekskul['id_ekskul'], # <--- TAMBAHKAN INI
+                                'nama_ekskul': detail_ekskul['nama_ekskul'],
+                                'pembina': detail_ekskul.get('nama_guru_pembina', 'N/A'),
+                                'jadwal': detail_ekskul.get('jadwal_deskripsi', 'N/A'),
+                                'status_pendaftaran': reg['status_pendaftaran'],
+                                'tanggal_pendaftaran': reg.get('tanggal_pendaftaran') 
+                            })
+            
+            return render_template('murid/ekskul_saya.html', 
+                                    list_ekskul_diikuti=data_ekskul_diikuti, 
+                                    nama_murid=session.get('nama_lengkap'))
+        @self.app.route('/murid/ekskul/detail/<int:ekskul_id>')
+        @self.murid_login_required
+        def detail_ekskul_murid(ekskul_id):
+            murid_id = session.get('user_id') # Untuk validasi atau personalisasi di masa depan
+            
+            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+            if not ekskul_info:
+                flash('Ekstrakurikuler tidak ditemukan.', 'danger')
+                return redirect(url_for('ekskul_saya_murid')) # atau ke dashboard murid
+
+            # Pastikan ekskul aktif, atau murid memang terdaftar jika ada aturan khusus
+            # Untuk sekarang, kita asumsikan jika bisa diakses, boleh dilihat detailnya
+            # if not ekskul_info['status_aktif']:
+            #     # Logika jika ekskul tidak aktif tapi murid masih terdaftar
+            #     pass
+
+            materi_list = self.con.get_materi_by_ekskul_id(ekskul_id)
+
+            return render_template('murid/detail_ekskul_murid.html',
+                                    ekskul=ekskul_info,
+                                    materi_list=materi_list,
+                                    nama_murid=session.get('nama_lengkap'))
+
+        @self.app.route('/murid/absensi-ekskul')
+        @self.murid_login_required
+        def lihat_absensi_ekskul_saya():
+            murid_id = session.get('user_id')
+            nama_murid = session.get('nama_lengkap')
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
+
+            if not tahun_ajaran_aktif:
+                flash("Tidak dapat menentukan tahun ajaran aktif. Hubungi admin.", "warning")
+                return redirect(url_for('dashboard_murid')) # Atau halaman lain
+
+            raw_attendance_records = self.con.get_my_attendance_records(murid_id, tahun_ajaran_aktif)
+                
+            attendance_by_ekskul = defaultdict(list)
+            if raw_attendance_records:
+                for record in raw_attendance_records:
+                    # Salin record agar tidak mengubah data asli jika masih dipakai di tempat lain
+                    processed_record = record.copy() 
+
+                    # Proses jam_mulai_kegiatan jika itu timedelta
+                    jam_mulai = processed_record.get('jam_mulai_kegiatan')
+                    if isinstance(jam_mulai, datetime.timedelta):
+                        # Ubah timedelta menjadi total detik
+                        total_seconds = int(jam_mulai.total_seconds())
+                        # Hitung jam dan menit
+                        hours = total_seconds // 3600
+                        minutes = (total_seconds % 3600) // 60
+                        # Format menjadi HH:MM
+                        processed_record['jam_mulai_kegiatan_str'] = f"{hours:02d}:{minutes:02d}"
+                    elif jam_mulai: # Jika sudah objek time atau datetime (jarang terjadi jika error timedelta)
+                        # Cek apakah punya strftime untuk keamanan
+                        if hasattr(jam_mulai, 'strftime'):
+                            processed_record['jam_mulai_kegiatan_str'] = jam_mulai.strftime('%H:%M')
+                        else: # Jika tipe tidak dikenal, tampilkan apa adanya
+                            processed_record['jam_mulai_kegiatan_str'] = str(jam_mulai)
+                    else:
+                        processed_record['jam_mulai_kegiatan_str'] = '-'
+                    
+                    # Hapus field asli jika mau, agar tidak bingung di template, atau biarkan
+                    # del processed_record['jam_mulai_kegiatan'] 
+
+                    attendance_by_ekskul[processed_record['nama_ekskul']].append(processed_record)
+            
+            return render_template('murid/absensi_ekskul_saya.html',
+                                    nama_murid=nama_murid,
+                                    attendance_by_ekskul=attendance_by_ekskul,
+                                    tahun_ajaran_aktif=tahun_ajaran_aktif)
+        
+        @self.app.route('/murid/profil/edit', methods=['GET', 'POST'])
+        @self.murid_login_required
+        def edit_profil_murid(): # Fungsi ini didefinisikan di dalam routes()
+                murid_id = session.get('user_id')
+                # Ambil data pengguna dari database untuk ditampilkan atau divalidasi
+                user_sekarang = self.con.get_user_by_id(murid_id)
+
+                if not user_sekarang:
+                    flash("Gagal memuat data profil Anda. Silakan login kembali.", "danger")
+                    return redirect(url_for('login'))
+
+                if request.method == 'POST':
+                    nama_lengkap_baru = request.form.get('nama_lengkap', '').strip()
+                    email_baru = request.form.get('email', '').strip()
+                    # Username dan nomor induk tidak diubah oleh murid, jadi kita tidak ambil dari form untuk diupdate
+
+                    current_password = request.form.get('current_password', '')
+                    new_password = request.form.get('new_password', '')
+                    confirm_new_password = request.form.get('confirm_new_password', '')
+
+                    # Data form untuk dikirim kembali ke template jika ada error validasi
+                    form_data_for_template = {
+                        'nama_lengkap': nama_lengkap_baru,
+                        'email': email_baru,
+                        'username': user_sekarang['username'], # Ambil dari user_sekarang
+                        'nomor_induk': user_sekarang.get('nomor_induk', '') # Ambil dari user_sekarang
+                        # Jangan sertakan password di sini
+                    }
+
+                    if not nama_lengkap_baru or not email_baru:
+                        flash('Nama Lengkap dan Email wajib diisi.', 'danger')
+                        return render_template('murid/edit_profil_murid.html', 
+                                               user_data=form_data_for_template, 
+                                               nama_murid=user_sekarang['nama_lengkap'])
+
+                    data_to_update = {
+                        'nama_lengkap': nama_lengkap_baru,
+                        'email': email_baru
+                    }
+                    password_changed_message_part = ""
+
+                    # Logika untuk update password
+                    if new_password: # Hanya proses jika field password baru diisi
+                        if not current_password:
+                            flash('Masukkan password saat ini untuk mengubah password.', 'warning')
+                            return render_template('murid/edit_profil_murid.html', 
+                                                   user_data=form_data_for_template, 
+                                                   nama_murid=user_sekarang['nama_lengkap'])
+                        
+                        if not check_password_hash(user_sekarang['password_hash'], current_password):
+                            flash('Password saat ini salah.', 'danger')
+                            return render_template('murid/edit_profil_murid.html', 
+                                                   user_data=form_data_for_template, 
+                                                   nama_murid=user_sekarang['nama_lengkap'])
+
+                        if new_password != confirm_new_password:
+                            flash('Password baru dan konfirmasi password tidak cocok.', 'danger')
+                            return render_template('murid/edit_profil_murid.html', 
+                                                   user_data=form_data_for_template, 
+                                                   nama_murid=user_sekarang['nama_lengkap'])
+                        
+                        # Validasi tambahan untuk password baru (misalnya panjang minimal) bisa ditambahkan di sini
+                        # if len(new_password) < 6:
+                        #     flash('Password baru minimal 6 karakter.', 'danger')
+                        #     return render_template('murid/edit_profil_murid.html', user_data=form_data_for_template, nama_murid=user_sekarang['nama_lengkap'])
+
+                        data_to_update['password'] = new_password # Password akan di-hash di metode update_user
+                        password_changed_message_part = " Password Anda juga telah diubah."
+                    
+                    # Panggil metode update_user dari Config.py
+                    # Metode ini mengupdate field yang ada di data_to_update
+                    if self.con.update_user(murid_id, data_to_update):
+                        # Update session jika nama_lengkap atau email (jika disimpan di session) berubah
+                        session['nama_lengkap'] = nama_lengkap_baru
+                        # session['email'] = email_baru # Jika email juga disimpan di session
+
+                        flash(f"Profil berhasil diperbarui.{password_changed_message_part}", 'success')
+                        return redirect(url_for('dashboard_murid')) # Arahkan ke dashboard setelah sukses
+                    else:
+                        flash('Gagal memperbarui profil. Terjadi kesalahan pada server.', 'danger')
+                        # Jika update_user gagal, render kembali form dengan data yang sudah diisi
+                        return render_template('murid/edit_profil_murid.html', 
+                                               user_data=form_data_for_template, 
+                                               nama_murid=user_sekarang['nama_lengkap'])
+                
+                # Ini adalah return untuk GET request (saat halaman pertama kali dimuat)
+                # user_sekarang sudah berisi data dari DB
+                return render_template('murid/edit_profil_murid.html', 
+                                       user_data=user_sekarang, 
+                                       nama_murid=user_sekarang['nama_lengkap'])
 
     def run(self):
         self.app.run(debug=True, host='0.0.0.0', port=5001) 

@@ -1,0 +1,68 @@
+{% extends "murid/layout_murid.html" %} {% block title %}Edit Profil Saya{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Edit Profil Saya</h2>
+    <p>Ubah informasi profil Anda di bawah ini, {{ nama_murid }}.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('edit_profil_murid') }}">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Informasi Pribadi</h5>
+                <div class="mb-3">
+                    <label for="nama_lengkap" class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" 
+                           value="{{ user_data.nama_lengkap if user_data else session.nama_lengkap }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="nomor_induk" class="form-label">Nomor Induk (NIS/NISN)</label>
+                    <input type="text" class="form-control" id="nomor_induk" name="nomor_induk" 
+                           value="{{ user_data.nomor_induk if user_data else '' }}" readonly>
+                    <small class="form-text text-muted">Nomor induk tidak dapat diubah.</small>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                           value="{{ user_data.email if user_data else session.email if 'email' in session else '' }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" 
+                           value="{{ user_data.username if user_data else session.username }}" readonly>
+                    <small class="form-text text-muted">Username tidak dapat diubah.</small>
+                </div>
+
+                <hr>
+                <h5 class="card-title mt-4">Ubah Password (Opsional)</h5>
+                <p><small class="text-muted">Kosongkan jika tidak ingin mengubah password.</small></p>
+                <div class="mb-3">
+                    <label for="current_password" class="form-label">Password Saat Ini</label>
+                    <input type="password" class="form-control" id="current_password" name="current_password">
+                     <small class="form-text text-muted">Diperlukan jika ingin mengubah password.</small>
+                </div>
+                <div class="mb-3">
+                    <label for="new_password" class="form-label">Password Baru</label>
+                    <input type="password" class="form-control" id="new_password" name="new_password">
+                </div>
+                <div class="mb-3">
+                    <label for="confirm_new_password" class="form-label">Konfirmasi Password Baru</label>
+                    <input type="password" class="form-control" id="confirm_new_password" name="confirm_new_password">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save"></i> Simpan Perubahan</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

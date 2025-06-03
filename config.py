@@ -1258,7 +1258,201 @@ class Config:
             if conn.open: conn.close()
         return murid_list
 
-            
+    def get_pengumuman_for_role(self, peran_target, limit=5):
+        """
+        Mengambil pengumuman yang ditujukan untuk 'semua' atau 'peran_target' tertentu.
+        """
+        conn = self._get_connection()
+        pengumuman_list = []
+        try:
+            with conn.cursor() as cursor:
+                # Mengambil juga nama pembuat pengumuman
+                sql = """
+                    SELECT pnm.judul_pengumuman, pnm.isi_pengumuman, pnm.tanggal_publikasi,
+                           usr.nama_lengkap AS nama_pembuat
+                    FROM Pengumuman pnm
+                    JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna
+                    WHERE pnm.target_peran = 'semua' OR pnm.target_peran = %s
+                    ORDER BY pnm.tanggal_publikasi DESC
+                """
+                params = [peran_target]
+                if limit:
+                    sql += " LIMIT %s"
+                    params.append(limit)
+                
+                cursor.execute(sql, tuple(params))
+                pengumuman_list = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching pengumuman for role {peran_target}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return pengumuman_list
+
+    def get_ekskul_diikuti_murid_detail(self, murid_id, tahun_ajaran):
+        """
+        Mengambil detail ekstrakurikuler yang diikuti oleh murid tertentu
+        pada tahun ajaran tertentu dengan status pendaftaran aktif.
+        """
+        conn = self._get_connection()
+        ekskul_diikuti = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT e.id_ekskul, e.nama_ekskul, e.jadwal_deskripsi, e.lokasi,
+                           p_pembina.nama_lengkap AS nama_pembina,
+                           pe.status_pendaftaran
+                    FROM PendaftaranEkskul pe
+                    JOIN Ekstrakurikuler e ON pe.id_ekskul = e.id_ekskul
+                    LEFT JOIN Pengguna p_pembina ON e.id_guru_pembina = p_pembina.id_pengguna
+                    WHERE pe.id_murid = %s 
+                      AND pe.tahun_ajaran = %s
+                      AND pe.status_pendaftaran IN ('Disetujui', 'Terdaftar') 
+                    ORDER BY e.nama_ekskul
+                """
+                cursor.execute(sql, (murid_id, tahun_ajaran))
+                ekskul_diikuti = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching ekskul diikuti by murid {murid_id} for TA {tahun_ajaran}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return ekskul_diikuti
+    
+    def get_pending_registrations_detailed(self, ekskul_id=None, id_guru_pembina=None):
+        """
+        Mengambil semua pendaftaran ekskul yang statusnya 'Menunggu Persetujuan'.
+        Bisa difilter berdasarkan ekskul_id atau id_guru_pembina.
+        """
+        conn = self._get_connection()
+        pending_list = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT 
+                        pe.id_pendaftaran_ekskul,
+                        pe.tanggal_pendaftaran,
+                        pe.tahun_ajaran,
+                        p_murid.id_pengguna AS id_murid,
+                        p_murid.nama_lengkap AS nama_murid,
+                        p_murid.nomor_induk AS nomor_induk_murid,
+                        e.id_ekskul,
+                        e.nama_ekskul,
+                        p_pembina.nama_lengkap AS nama_pembina
+                    FROM PendaftaranEkskul pe
+                    JOIN Pengguna p_murid ON pe.id_murid = p_murid.id_pengguna
+                    JOIN Ekstrakurikuler e ON pe.id_ekskul = e.id_ekskul
+                    LEFT JOIN Pengguna p_pembina ON e.id_guru_pembina = p_pembina.id_pengguna
+                    WHERE pe.status_pendaftaran = %s
+                """
+                params = ['Menunggu Persetujuan']
+
+                if ekskul_id:
+                    sql += " AND e.id_ekskul = %s"
+                    params.append(ekskul_id)
+                
+                if id_guru_pembina:
+                    sql += " AND e.id_guru_pembina = %s"
+                    params.append(id_guru_pembina)
+                
+                sql += " ORDER BY pe.tanggal_pendaftaran ASC"
+                
+                cursor.execute(sql, tuple(params))
+                pending_list = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching pending registrations: {e}")
+        finally:
+            if conn.open: conn.close()
+        return pending_list
+    
+    def get_pendaftaran_ekskul_by_id(self, pendaftaran_id):
+        conn = self._get_connection()
+        pendaftaran = None
+        try:
+            with conn.cursor() as cursor:
+                # Ambil juga id_ekskul dan tahun_ajaran untuk cek kuota
+                sql = "SELECT * FROM PendaftaranEkskul WHERE id_pendaftaran_ekskul = %s"
+                cursor.execute(sql, (pendaftaran_id,))
+                pendaftaran = cursor.fetchone()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching pendaftaran by ID {pendaftaran_id}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return pendaftaran
+
+    def count_active_members_ekskul(self, ekskul_id, tahun_ajaran):
+        conn = self._get_connection()
+        count = 0
+        try:
+            with conn.cursor() as cursor:
+                sql = """SELECT COUNT(*) as jumlah FROM PendaftaranEkskul 
+                         WHERE id_ekskul = %s AND tahun_ajaran = %s 
+                         AND status_pendaftaran IN ('Disetujui', 'Terdaftar')"""
+                cursor.execute(sql, (ekskul_id, tahun_ajaran))
+                result = cursor.fetchone()
+                if result:
+                    count = result['jumlah']
+        except pymysql.MySQLError as e:
+            print(f"Error counting active members for ekskul {ekskul_id}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return count
+    
+    def get_pendaftaran_by_murid(self, murid_id, tahun_ajaran):
+        """
+        Mengambil semua data pendaftaran ekstrakurikuler untuk murid tertentu
+        pada tahun ajaran tertentu, terlepas dari status pendaftarannya.
+        """
+        conn = self._get_connection()
+        pendaftaran_list = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """SELECT * FROM PendaftaranEkskul 
+                         WHERE id_murid = %s AND tahun_ajaran = %s 
+                         ORDER BY tanggal_pendaftaran DESC"""
+                # Debug tambahan di Config.py jika diperlukan
+                # print(f"DEBUG SQL (get_pendaftaran_by_murid): Query: {sql}, Params: ({murid_id}, {tahun_ajaran})")
+                cursor.execute(sql, (murid_id, tahun_ajaran))
+                pendaftaran_list = cursor.fetchall()
+                # print(f"DEBUG SQL (get_pendaftaran_by_murid): Result: {pendaftaran_list}")
+        except pymysql.MySQLError as e:
+            print(f"Error fetching pendaftaran by murid ID {murid_id} for TA {tahun_ajaran}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return pendaftaran_list
+    
+    def get_my_attendance_records(self, murid_id, tahun_ajaran):
+        """
+        Mengambil semua catatan absensi seorang murid untuk semua ekskul yang diikutinya
+        (status Disetujui/Terdaftar) pada tahun ajaran tertentu.
+        """
+        conn = self._get_connection()
+        records = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT 
+                        ae.tanggal_kegiatan,
+                        ae.jam_mulai_kegiatan,
+                        ae.status_kehadiran,
+                        ae.catatan AS catatan_absensi,
+                        e.nama_ekskul,
+                        e.id_ekskul,
+                        p_dicatat.nama_lengkap AS nama_pencatat
+                    FROM AbsensiEkskul ae
+                    JOIN PendaftaranEkskul pe ON ae.id_pendaftaran_ekskul = pe.id_pendaftaran_ekskul
+                    JOIN Ekstrakurikuler e ON pe.id_ekskul = e.id_ekskul
+                    LEFT JOIN Pengguna p_dicatat ON ae.dicatat_oleh_id = p_dicatat.id_pengguna
+                    WHERE pe.id_murid = %s
+                      AND pe.tahun_ajaran = %s
+                      AND pe.status_pendaftaran IN ('Disetujui', 'Terdaftar')
+                    ORDER BY e.nama_ekskul ASC, ae.tanggal_kegiatan DESC;
+                """
+                cursor.execute(sql, (murid_id, tahun_ajaran))
+                records = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching my attendance records for murid_id {murid_id}, TA {tahun_ajaran}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return records
 
     # Anda juga akan menggunakan kembali metode-metode yang sudah ada dari Admin
     # untuk fitur pengelolaan peserta ekskul oleh guru, misalnya:
