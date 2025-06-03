@@ -28,7 +28,7 @@
     }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     table, th, td { border: 1px solid #ddd; }
-    th, td { padding: 0.75rem; text-align: left; }
+    th, td { padding: 0.75rem; text-align: left; vertical-align: middle; } /* vertical-align added */
     th { background-color: #e9ecef; }
     .form-label { font-weight: bold; margin-top: 0.5rem; }
     input[type="text"], input[type="date"], input[type="time"], select, textarea {
@@ -48,6 +48,7 @@
     }
     .nav-pills .nav-link { color: #321B15; font-weight: bold; }
     .nav-pills .nav-link.active { background-color: #321B15; color: #ECE5D8; }
+    .action-buttons .btn { margin-right: 5px; margin-bottom: 5px;} /* For better spacing of action buttons */
   </style>
 {% endblock %}
 
@@ -60,17 +61,21 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info-content" type="button" role="tab" aria-controls="info-content" aria-selected="true">Info & Jadwal</button>
   </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="manajemen-siswa-tab" data-bs-toggle="tab" data-bs-target="#manajemen-siswa-content" type="button" role="tab" aria-controls="manajemen-siswa-content" aria-selected="false">Kelola Peserta Ekskul</button>
+   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="persetujuan-tab" data-bs-toggle="tab" data-bs-target="#persetujuan-content" type="button" role="tab" aria-controls="persetujuan-content" aria-selected="false">Persetujuan Pendaftaran</button>
   </li>
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="absen-tab" data-bs-toggle="tab" data-bs-target="#absen-content" type="button" role="tab" aria-controls="absen-content" aria-selected="false">Input Absensi</button>
+  </li>
+  <li class="nav-item">
+      <a class="nav-link {% if request.endpoint == 'list_all_ekskul_guru' or request.endpoint == 'detail_ekskul_guru' %}active{% endif %}" href="{{ url_for('list_all_ekskul_guru') }}">Semua Ekstrakurikuler</a>
   </li>
 </ul>
 
 <div class="tab-content" id="guruTabContent">
     <div class="tab-pane fade show active" id="info-content" role="tabpanel" aria-labelledby="info-tab">
         <section class="container-custom">
+            <h2>Informasi Terbaru</h2> {# Judul lebih umum #}
             {% if info_terbaru %}
                 <ul class="list-group list-group-flush">
                 {% for pengumuman in info_terbaru %}
@@ -96,7 +101,7 @@
             {% if jadwal_ekskul %}
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
-                    <thead>
+                    <thead class="table-dark"> {# Ganti background header tabel #}
                     <tr>
                         <th>Nama Ekstrakurikuler</th>
                         <th>Jadwal</th>
@@ -110,9 +115,12 @@
                         <td>{{ jadwal.nama_ekskul }}</td>
                         <td>{{ jadwal.jadwal_deskripsi if jadwal.jadwal_deskripsi else '-' }}</td>
                         <td>{{ jadwal.lokasi if jadwal.lokasi else '-' }}</td>
-                        <td>
-                            <a href="{{ url_for('kelola_peserta_ekskul_guru', ekskul_id=jadwal.id_ekskul) }}" class="btn btn-sm btn-primary">
-                                Kelola Peserta
+                        <td class="action-buttons">
+                            <a href="{{ url_for('detail_ekskul_guru', ekskul_id=jadwal.id_ekskul) }}" class="btn btn-sm btn-info" title="Lihat Detail Ekskul">
+                                <i class="fas fa-eye"></i> Detail
+                            </a>
+                            <a href="{{ url_for('kelola_peserta_ekskul_guru', ekskul_id=jadwal.id_ekskul) }}" class="btn btn-sm btn-primary" title="Kelola Peserta Ekskul">
+                                <i class="fas fa-users-cog"></i> Kelola Peserta
                             </a>
                         </td>
                     </tr>
@@ -126,11 +134,86 @@
         </section>
     </div>
 
+    <div class="tab-pane fade" id="persetujuan-content" role="tabpanel" aria-labelledby="persetujuan-tab">
+    <section class="container-custom">
+        <h2>Persetujuan Pendaftaran Ekstrakurikuler</h2>
+        {% if pending_registrations %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>No.</th>
+                        <th>Nama Murid</th>
+                        <th>Nomor Induk</th>
+                        <th>Ekskul Diminati</th>
+                        <th>Tgl Daftar</th>
+                        <th>Tahun Ajaran</th>
+                        <th>Catatan Pendaftar</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reg in pending_registrations %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ reg.nama_murid }}</td>
+                        <td>{{ reg.nomor_induk_murid if reg.nomor_induk_murid else '-' }}</td>
+                        <td>{{ reg.nama_ekskul }}</td>
+                        <td>{{ reg.tanggal_pendaftaran.strftime('%d %b %Y, %H:%M') if reg.tanggal_pendaftaran else '-' }}</td>
+                        <td>{{ reg.tahun_ajaran }}</td>
+                        <td>{{ reg.catatan_pendaftar | default('-', true) }}</td>
+                        <td class="action-buttons">
+                            <form method="POST" action="{{ url_for('setujui_pendaftaran_guru', pendaftaran_id=reg.id_pendaftaran_ekskul) }}" style="display: inline-block; margin-bottom: 5px;">
+                                <button type="submit" class="btn btn-success btn-sm" title="Setujui Pendaftaran">
+                                    <i class="fas fa-check"></i> Setujui
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#tolakModalGuru{{ reg.id_pendaftaran_ekskul }}" title="Tolak Pendaftaran">
+                                <i class="fas fa-times"></i> Tolak
+                            </button>
+
+                            <div class="modal fade" id="tolakModalGuru{{ reg.id_pendaftaran_ekskul }}" tabindex="-1" aria-labelledby="tolakModalGuruLabel{{ reg.id_pendaftaran_ekskul }}" aria-hidden="true">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <form method="POST" action="{{ url_for('tolak_pendaftaran_guru', pendaftaran_id=reg.id_pendaftaran_ekskul) }}">
+                                    <div class="modal-header">
+                                      <h5 class="modal-title" id="tolakModalGuruLabel{{ reg.id_pendaftaran_ekskul }}">Tolak Pendaftaran: {{ reg.nama_murid }} - {{ reg.nama_ekskul }}</h5>
+                                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                      <div class="mb-3">
+                                        <label for="alasan_penolakan_guru_{{ reg.id_pendaftaran_ekskul }}" class="form-label">Alasan Penolakan (Opsional):</label>
+                                        <textarea class="form-control" id="alasan_penolakan_guru_{{ reg.id_pendaftaran_ekskul }}" name="alasan_penolakan_guru" rows="3"></textarea>
+                                      </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                      <button type="submit" class="btn btn-danger">Tolak Pendaftaran</button>
+                                    </div>
+                                  </form>
+                                </div>
+                              </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info" role="alert">
+            Tidak ada pendaftaran yang menunggu persetujuan untuk ekstrakurikuler yang Anda bina saat ini.
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+
     <div class="tab-pane fade" id="manajemen-siswa-content" role="tabpanel" aria-labelledby="manajemen-siswa-tab">
         <section class="container-custom">
-            <h2>Manajemen Siswa Ekstrakurikuler</h2>
-            <p>Untuk mengelola siswa (mendaftarkan atau mengeluarkan) dari ekstrakurikuler yang Anda bina, silakan pilih ekskul dari tabel "Jadwal Ekstrakurikuler Anda" di tab "Info & Jadwal", lalu klik tombol "Kelola Peserta".</p>
-            <p class="text-muted">Bagian manajemen siswa yang sebelumnya ada di sini (yang bersifat lokal di browser) telah dipindahkan ke halaman pengelolaan peserta per ekstrakurikuler agar terhubung dengan database.</p>
+            <h2>Info Pengelolaan Peserta</h2>
+            <p>Untuk mengelola siswa (mendaftarkan atau mengeluarkan) dari ekstrakurikuler yang Anda bina, silakan pilih ekskul dari tabel "Jadwal Ekstrakurikuler Anda" di tab "Info & Jadwal", lalu klik tombol "<i class="fas fa-users-cog"></i> Kelola Peserta".</p>
+            <p>Anda juga dapat melihat detail setiap ekstrakurikuler melalui tombol "<i class="fas fa-eye"></i> Detail" pada tabel yang sama.</p>
             
             {# JavaScript lokal untuk tambah/hapus siswa (Manajemen Siswa) bisa dihapus dari sini jika sudah pindah ke halaman kelola peserta ekskul #}
             {# Jika masih mau ada input siswa lokal di sini untuk tujuan lain, biarkan JS-nya #}
@@ -146,26 +229,26 @@
                 <input type="hidden" name="tahun_ajaran" value="{{ tahun_ajaran_aktif }}">
                 
                 <div class="mb-3">
-                    <label for="id_ekskul" class="form-label">Ekstrakurikuler <span class="text-danger">*</span></label>
-                    <select class="form-select" id="id_ekskul" name="id_ekskul" required>
+                    <label for="id_ekskul_absen" class="form-label">Ekstrakurikuler <span class="text-danger">*</span></label> {# Ubah id agar unik jika ada id_ekskul lain #}
+                    <select class="form-select" id="id_ekskul_absen" name="id_ekskul" required>
                         <option value="">-- Pilih Ekskul yang Anda Bina --</option>
-                        {% for eks in ekskul_guru %}
+                        {% for eks in ekskul_guru %} {# ekskul_guru dikirim dari app.py #}
                             <option value="{{ eks.id_ekskul }}">{{ eks.nama_ekskul }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div class="mb-3">
-                    <label for="id_murid" class="form-label">Nama Siswa <span class="text-danger">*</span></label>
-                    <select class="form-select" id="id_murid" name="id_murid" required>
+                    <label for="id_murid_absen" class="form-label">Nama Siswa <span class="text-danger">*</span></label> {# Ubah id agar unik #}
+                    <select class="form-select" id="id_murid_absen" name="id_murid" required>
                         <option value="">-- Pilih Siswa --</option>
-                        {% for murid in murid_untuk_absen %}
+                        {% for murid in murid_untuk_absen %} {# murid_untuk_absen dikirim dari app.py #}
                             <option value="{{ murid.id_pengguna }}">{{ murid.nama_lengkap }} ({{ murid.nomor_induk if murid.nomor_induk else 'NIS Kosong' }})</option>
                         {% else %}
-                            <option disabled>Tidak ada murid terkait dengan ekskul Anda.</option>
+                            <option disabled>Tidak ada murid terkait dengan ekskul yang Anda bina atau filter belum diterapkan.</option>
                         {% endfor %}
                     </select>
-                     <small class="form-text text-muted">Menampilkan murid dari ekskul yang Anda bina pada tahun ajaran aktif.</small>
+                     <small class="form-text text-muted">Menampilkan murid dari ekskul yang Anda bina pada tahun ajaran aktif. Pilih ekskul terlebih dahulu untuk memuat daftar siswa yang relevan (jika ada filter dinamis).</small>
                 </div>
                 
                 <div class="mb-3">
@@ -285,11 +368,10 @@
         // Jika ada tab yang aktif dari URL hash, aktifkan
         if(window.location.hash) {
             var activeTab = document.querySelector('#guruTab button[data-bs-target="' + window.location.hash + '"]');
-            if (active_tab) {
-                (new bootstrap.Tab(active_tab)).show();
+            if (activeTab) { // Perbaikan: active_tab menjadi activeTab
+                (new bootstrap.Tab(activeTab)).show();
             }
         }
-
     });
   </script>
 {% endblock %}

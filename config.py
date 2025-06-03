@@ -1453,6 +1453,22 @@ class Config:
         finally:
             if conn.open: conn.close()
         return records
+    
+    def delete_pendaftaran_ekskul_by_id(self, pendaftaran_id):
+        """Menghapus record pendaftaran ekskul berdasarkan ID pendaftarannya."""
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                sql = "DELETE FROM PendaftaranEkskul WHERE id_pendaftaran_ekskul = %s"
+                cursor.execute(sql, (pendaftaran_id,))
+                conn.commit()
+                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+        except pymysql.MySQLError as e:
+            print(f"Error deleting pendaftaran ekskul by ID {pendaftaran_id}: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn.open: conn.close()
 
     # Anda juga akan menggunakan kembali metode-metode yang sudah ada dari Admin
     # untuk fitur pengelolaan peserta ekskul oleh guru, misalnya:

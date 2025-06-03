@@ -22,6 +22,10 @@ class Portal:
         self.routes()
         self.app.config['UPLOAD_FOLDER'] = os.path.join(self.app.root_path, 'static/uploads/materi_ekskul') 
         self.app.config['ALLOWED_EXTENSIONS'] = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'}
+        @self.app.context_processor
+        def inject_now():
+            from datetime import datetime # Pastikan datetime diimpor di sini jika belum global
+            return {'now': datetime.utcnow()} # atau datetime.now()
 
 
 
@@ -1157,136 +1161,467 @@ class Portal:
     # === Guru Route ===
 
     # --- Rute Dashboard Guru ---
+        def _cek_guru_pembina_ekskul(ekskul_id_to_check): # Jika nested function di routes()
+            """Helper untuk cek apakah guru yang login adalah pembina ekskul_id_to_check."""
+            guru_id_session = session.get('user_id')
+            # 'self.con' merujuk pada instance Config dari objek Portal
+            ekskul = self.con.get_ekskul_by_id(ekskul_id_to_check) 
+            if not ekskul:
+                flash(f"Ekstrakurikuler dengan ID {ekskul_id_to_check} tidak ditemukan.", "danger")
+                return False, None 
+            if ekskul.get('id_guru_pembina') != guru_id_session:
+                flash("Anda tidak memiliki hak akses untuk mengelola fitur ini pada ekskul tersebut.", "danger")
+                return False, ekskul 
+            return True, ekskul
+
         @self.app.route('/guru/dashboard')
         @self.guru_login_required
         def dashboard_guru():
             guru_id = session.get('user_id')
             nama_guru = session.get('nama_lengkap')
-            info_terbaru_guru = self.con.get_pengumuman_for_guru(guru_id)
+            # Mengambil pengumuman untuk guru (misalnya, yang targetnya 'semua' atau 'guru')
+            info_terbaru_guru = self.con.get_pengumuman_for_guru(guru_id) # Pastikan metode ini ada di Config
             
-            # ... (pengambilan data lain seperti jadwal_ekskul_guru, dll.) ...
             jadwal_ekskul_guru = self.con.get_ekskul_by_pembina(guru_id)
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025" # GANTI INI JIKA PERLU
-            murid_untuk_absen = self.con.get_murid_options_for_guru_absen(guru_id, tahun_ajaran_aktif)
-
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() # Pastikan metode ini ada
+            
+            murid_untuk_absen = self.con.get_murid_options_for_guru_absen(guru_id, tahun_ajaran_aktif) # Pastikan metode ini ada
+            
+            # Ambil pendaftaran yang menunggu persetujuan untuk ekskul yang dibina guru ini
+            pending_registrations_guru = self.con.get_pending_registrations_detailed(id_guru_pembina=guru_id) # Pastikan metode ini ada
 
             return render_template('guru/dashboard_guru.html', 
                                    nama_guru=nama_guru,
                                    jadwal_ekskul=jadwal_ekskul_guru,
-                                   info_terbaru=info_terbaru_guru, # Ini variabel yang dikirim ke template
+                                   info_terbaru=info_terbaru_guru,
                                    murid_untuk_absen=murid_untuk_absen,
-                                   ekskul_guru=jadwal_ekskul_guru, 
+                                   ekskul_guru=jadwal_ekskul_guru, # Untuk dropdown form absen
                                    tahun_ajaran_aktif=tahun_ajaran_aktif,
-                                   default_tanggal_absen=date.today().isoformat())
+                                   default_tanggal_absen=date.today().isoformat(),
+                                   pending_registrations=pending_registrations_guru)
 
-        # --- Rute untuk Submit Absen Guru (BARU) ---
+        @self.app.route('/guru/ekskul/semua')
+        @self.guru_login_required
+        def list_all_ekskul_guru():
+            ekskul_list = self.con.get_all_ekskul() 
+            return render_template('guru/list_semua_ekskul.html', 
+                                   ekskul_list=ekskul_list, 
+                                   nama_guru=session.get('nama_lengkap'))
+
+        @self.app.route('/guru/ekskul/detail/<int:ekskul_id>')
+        @self.guru_login_required
+        def detail_ekskul_guru(ekskul_id):
+            guru_id = session.get('user_id')
+            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+
+            if not ekskul_info:
+                flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
+                return redirect(url_for('list_all_ekskul_guru'))
+
+            materi_list = self.con.get_materi_by_ekskul_id(ekskul_id)
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
+            members = self.con.get_members_of_ekskul(ekskul_id, tahun_ajaran_aktif)
+            is_pembina = (guru_id == ekskul_info.get('id_guru_pembina'))
+
+            return render_template('guru/detail_ekskul_guru.html',
+                                   ekskul_info=ekskul_info,
+                                   materi_list=materi_list,
+                                   members=members,
+                                   is_pembina=is_pembina,
+                                   nama_guru=session.get('nama_lengkap'),
+                                   tahun_ajaran_aktif=tahun_ajaran_aktif)
+
         @self.app.route('/guru/absen/submit', methods=['POST'])
         @self.guru_login_required
         def submit_absen_guru():
             guru_id = session.get('user_id')
             try:
-                murid_id = int(request.form.get('id_murid'))
-                ekskul_id = int(request.form.get('id_ekskul'))
+                murid_id_str = request.form.get('id_murid')
+                ekskul_id_str = request.form.get('id_ekskul')
                 status_kehadiran = request.form.get('status_kehadiran')
                 tanggal_kegiatan = request.form.get('tanggal_kegiatan')
-                tahun_ajaran = request.form.get('tahun_ajaran') # Pastikan ini ada di form
-                catatan = request.form.get('catatan_absen', '')
-                jam_kegiatan = request.form.get('jam_kegiatan', None) # Opsional dari form
-
-                if not all([murid_id, ekskul_id, status_kehadiran, tanggal_kegiatan, tahun_ajaran]):
-                    flash("Data absen tidak lengkap. Semua field wajib diisi.", 'danger')
+                # Ambil tahun ajaran dari form, atau default ke tahun ajaran aktif
+                tahun_ajaran = request.form.get('tahun_ajaran') or self.con.get_tahun_ajaran_aktif()
+                
+                if not all([murid_id_str, ekskul_id_str, status_kehadiran, tanggal_kegiatan, tahun_ajaran]) or \
+                   not murid_id_str.isdigit() or not ekskul_id_str.isdigit():
+                    flash("Data absen tidak lengkap atau ID tidak valid. Murid, Ekskul, Status, Tanggal, dan Tahun Ajaran wajib diisi.", 'danger')
                     return redirect(url_for('dashboard_guru'))
 
-                # Dapatkan id_pendaftaran_ekskul
+                murid_id = int(murid_id_str)
+                ekskul_id = int(ekskul_id_str)
+                
+                # Verifikasi guru adalah pembina ekskul yang dipilih untuk absen
+                # _cek_guru_pembina_ekskul mengembalikan (True/False, ekskul_info_or_None)
+                is_pembina_for_absen, _ = _cek_guru_pembina_ekskul(ekskul_id) 
+                if not is_pembina_for_absen:
+                    # Flash message sudah dihandle oleh _cek_guru_pembina_ekskul
+                    return redirect(url_for('dashboard_guru'))
+
+                catatan = request.form.get('catatan_absen', '')
+                jam_kegiatan = request.form.get('jam_kegiatan') or None # Akan jadi None jika string kosong
+
                 id_pendaftaran_ekskul = self.con.get_pendaftaran_ekskul_id(murid_id, ekskul_id, tahun_ajaran)
 
                 if id_pendaftaran_ekskul:
                     if self.con.save_absensi_ekskul(id_pendaftaran_ekskul, tanggal_kegiatan, status_kehadiran, guru_id, catatan, jam_kegiatan):
                         flash("Data absensi berhasil disimpan/diperbarui.", "success")
                     else:
-                        flash("Gagal menyimpan data absensi. Terjadi kesalahan.", "danger")
+                        flash("Gagal menyimpan data absensi. Terjadi kesalahan pada database.", "danger")
                 else:
-                    flash(f"Murid tidak terdaftar di ekstrakurikuler tersebut pada tahun ajaran {tahun_ajaran} atau pendaftaran tidak aktif.", "warning")
-                
-            except ValueError:
+                    flash(f"Murid tidak terdaftar secara aktif di ekstrakurikuler tersebut pada tahun ajaran {tahun_ajaran}.", "warning")
+            
+            except ValueError: # Untuk int() conversion errors
                 flash("ID Murid atau ID Ekskul tidak valid.", "danger")
             except Exception as e:
-                flash(f"Terjadi kesalahan internal: {e}", "danger")
-                print(f"Error saat submit absen: {e}") # Untuk debugging di server
+                flash(f"Terjadi kesalahan internal saat submit absen: {e}", "danger")
+                print(f"Error saat submit absen oleh guru: {e}") 
 
             return redirect(url_for('dashboard_guru'))
-        
-        # --- Halaman untuk Guru Mengelola Peserta Ekskulnya (BARU) ---
+            
+        @self.app.route('/guru/ekskul/pendaftaran/<int:pendaftaran_id>/setujui', methods=['POST'])
+        @self.guru_login_required
+        def setujui_pendaftaran_guru(pendaftaran_id):
+            guru_id_session = session.get('user_id')
+            pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
+
+            if not pendaftaran_info:
+                flash("Data pendaftaran tidak ditemukan.", "danger")
+                return redirect(request.referrer or url_for('dashboard_guru'))
+
+            # Cek apakah guru yang login adalah pembina dari ekskul terkait
+            is_pembina_of_ekskul, ekskul_info = _cek_guru_pembina_ekskul(pendaftaran_info['id_ekskul'])
+            if not is_pembina_of_ekskul:
+                # Flash message sudah dihandle oleh _cek_guru_pembina_ekskul
+                return redirect(request.referrer or url_for('dashboard_guru'))
+
+            # Cek kuota jika ada (ekskul_info didapat dari _cek_guru_pembina_ekskul)
+            if ekskul_info and ekskul_info.get('kuota_maksimal') is not None:
+                jumlah_peserta_aktif = self.con.count_active_members_ekskul(pendaftaran_info['id_ekskul'], pendaftaran_info['tahun_ajaran'])
+                if jumlah_peserta_aktif >= ekskul_info['kuota_maksimal']:
+                    flash(f"Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh. Pendaftaran tidak dapat disetujui.", "warning")
+                    self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', f"Ditolak otomatis karena kuota penuh saat approval oleh Guru: {session.get('nama_lengkap')}")
+                    return redirect(request.referrer or url_for('dashboard_guru'))
+            
+            catatan = f"Disetujui oleh Guru Pembina: {session.get('nama_lengkap')}"
+            if self.con.update_ekskul_registration_status(pendaftaran_id, 'Disetujui', catatan):
+                flash('Pendaftaran berhasil disetujui.', 'success')
+            else:
+                flash('Gagal menyetujui pendaftaran.', 'danger')
+            return redirect(request.referrer or url_for('dashboard_guru'))
+
+        @self.app.route('/guru/ekskul/pendaftaran/<int:pendaftaran_id>/tolak', methods=['POST'])
+        @self.guru_login_required
+        def tolak_pendaftaran_guru(pendaftaran_id):
+            pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
+            if not pendaftaran_info:
+                flash("Data pendaftaran tidak ditemukan.", "danger")
+                return redirect(request.referrer or url_for('dashboard_guru'))
+
+            is_pembina_of_ekskul, _ = _cek_guru_pembina_ekskul(pendaftaran_info['id_ekskul'])
+            if not is_pembina_of_ekskul:
+                return redirect(request.referrer or url_for('dashboard_guru'))
+
+            alasan = request.form.get('alasan_penolakan_guru', 'Ditolak oleh Guru Pembina.')
+            catatan = f"{alasan} (Guru: {session.get('nama_lengkap')})"
+            if self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', catatan):
+                flash('Pendaftaran berhasil ditolak.', 'success')
+            else:
+                flash('Gagal menolak pendaftaran.', 'danger')
+            return redirect(request.referrer or url_for('dashboard_guru'))
+
         @self.app.route('/guru/ekskul/<int:ekskul_id>/peserta')
         @self.guru_login_required
         def kelola_peserta_ekskul_guru(ekskul_id):
-            guru_id = session.get('user_id')
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+            # Cek apakah guru adalah pembina
+            is_pembina, ekskul_info = _cek_guru_pembina_ekskul(ekskul_id)
+            if not is_pembina:
+                return redirect(url_for('dashboard_guru')) # atau ke detail ekskul jika ekskul_info ada
 
-            # Validasi apakah guru ini adalah pembina ekskul tersebut
-            if not ekskul_info or ekskul_info.get('id_guru_pembina') != guru_id:
-                flash("Anda tidak memiliki akses untuk mengelola peserta ekskul ini.", "danger")
-                return redirect(url_for('dashboard_guru'))
-
-            # Tentukan tahun ajaran aktif
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025" # GANTI INI
-
+            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() 
             current_members = self.con.get_members_of_ekskul(ekskul_id, tahun_ajaran_aktif)
+            # Murid yang bisa ditambahkan: yang aktif dan belum terdaftar di ekskul ini T.A. ini
             available_students_to_add = self.con.get_all_active_murid_exclude_ekskul(ekskul_id, tahun_ajaran_aktif)
             
             return render_template('guru/kelola_peserta_ekskul.html',
                                    ekskul_info=ekskul_info,
                                    members=current_members,
                                    available_students=available_students_to_add,
-                                   tahun_ajaran_aktif=tahun_ajaran_aktif)
+                                   tahun_ajaran_aktif=tahun_ajaran_aktif,
+                                   nama_guru=session.get('nama_lengkap'))
 
-        # --- Tambah Peserta ke Ekskul oleh Guru (BARU) ---
         @self.app.route('/guru/ekskul/<int:ekskul_id>/add_peserta', methods=['POST'])
         @self.guru_login_required
         def add_peserta_ekskul_guru(ekskul_id):
-            guru_id = session.get('user_id')
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
-            if not ekskul_info or ekskul_info.get('id_guru_pembina') != guru_id:
-                flash("Anda tidak memiliki akses untuk menambah peserta ke ekskul ini.", "danger")
-                return redirect(url_for('dashboard_guru'))
+            is_pembina, ekskul_info = _cek_guru_pembina_ekskul(ekskul_id)
+            if not is_pembina:
+                 return redirect(url_for('dashboard_guru'))
 
-            murid_id = request.form.get('id_murid')
+
+            murid_id_str = request.form.get('id_murid')
             tahun_ajaran = request.form.get('tahun_ajaran') # Seharusnya sama dengan tahun ajaran ekskul
 
-            if not murid_id or not tahun_ajaran:
-                flash("Murid dan tahun ajaran harus dipilih/diisi.", "danger")
+            if not murid_id_str or not tahun_ajaran or not murid_id_str.isdigit():
+                flash("Murid dan tahun ajaran harus dipilih/diisi dengan benar.", "danger")
             else:
-                murid_id = int(murid_id)
-                if self.con.register_student_for_ekskul(murid_id, ekskul_id, tahun_ajaran, 
-                                                         status_pendaftaran='Disetujui', 
-                                                         catatan_admin=f"Didaftarkan oleh Guru: {session.get('nama_lengkap')}"):
+                murid_id = int(murid_id_str)
+                catatan_pendaftar = f"Didaftarkan oleh Guru Pembina: {session.get('nama_lengkap')}"
+                
+                # Panggil metode register_student_for_ekskul dari Config
+                # yang sudah menangani pengecekan kuota dan duplikasi
+                hasil_pendaftaran = self.con.register_student_for_ekskul(
+                    murid_id, ekskul_id, tahun_ajaran, 
+                    status_pendaftaran='Disetujui', # Guru langsung menyetujui
+                    catatan_pendaftar=catatan_pendaftar
+                )
+
+                if isinstance(hasil_pendaftaran, int): # Berhasil, ID pendaftaran dikembalikan
                     murid_info = self.con.get_user_by_id(murid_id)
                     flash(f"Murid '{murid_info['nama_lengkap'] if murid_info else 'ID '+str(murid_id)}' berhasil ditambahkan ke ekskul '{ekskul_info['nama_ekskul']}'.", "success")
-                else:
-                    flash("Gagal menambahkan murid. Mungkin sudah terdaftar atau terjadi kesalahan.", "danger")
+                elif hasil_pendaftaran == "KUOTA_PENUH":
+                    flash(f"Gagal menambahkan. Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh.", "warning")
+                elif hasil_pendaftaran == "SUDAH_TERDAFTAR":
+                     murid_info = self.con.get_user_by_id(murid_id)
+                     flash(f"Gagal menambahkan. Murid '{murid_info['nama_lengkap'] if murid_info else 'ID '+str(murid_id)}' sudah memiliki record pendaftaran di ekskul '{ekskul_info['nama_ekskul']}' untuk tahun ajaran ini.", "warning")
+                elif hasil_pendaftaran == "EKSKUL_NOT_FOUND": # Seharusnya tidak terjadi jika _cek_guru_pembina_ekskul lolos
+                    flash(f"Ekskul '{ekskul_info['nama_ekskul']}' tidak ditemukan.", "danger")
+                else: # Error umum dari register_student_for_ekskul (return False)
+                    flash("Gagal menambahkan murid. Terjadi kesalahan pada sistem.", "danger")
+            
             return redirect(url_for('kelola_peserta_ekskul_guru', ekskul_id=ekskul_id))
 
-        # --- Keluarkan Peserta dari Ekskul oleh Guru (Mirip dengan admin, tapi dengan cek kepemilikan) ---
         @self.app.route('/guru/ekskul/remove_peserta/<int:pendaftaran_id>', methods=['POST'])
         @self.guru_login_required
         def remove_peserta_ekskul_guru(pendaftaran_id):
-            guru_id = session.get('user_id')
             ekskul_id_redirect = request.form.get('ekskul_id_redirect') # Untuk redirect kembali
 
-            # TODO: Validasi penting: Cek apakah pendaftaran_id ini milik ekskul yang dibina oleh guru_id yang login.
-            # Ini memerlukan query tambahan di Config untuk mendapatkan detail pendaftaran
-            # atau memvalidasi id_guru_pembina dari ekskul yang terkait pendaftaran_id.
-            # Untuk sementara, kita asumsikan valid jika guru mengaksesnya dari halaman yang benar.
+            pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
+            if not pendaftaran_info:
+                flash("Data pendaftaran tidak ditemukan.", "danger")
+                return redirect(url_for('dashboard_guru'))
 
-            if self.con.update_ekskul_registration_status(pendaftaran_id, new_status='Berhenti', 
-                                                            catatan_admin=f"Dikeluarkan oleh Guru: {session.get('nama_lengkap')}"):
+            # Cek apakah guru yang login adalah pembina dari ekskul terkait pendaftaran ini
+            is_pembina, _ = _cek_guru_pembina_ekskul(pendaftaran_info['id_ekskul'])
+            if not is_pembina:
+                if ekskul_id_redirect and ekskul_id_redirect.isdigit():
+                    return redirect(url_for('kelola_peserta_ekskul_guru', ekskul_id=int(ekskul_id_redirect)))
+                return redirect(url_for('dashboard_guru'))
+
+            catatan_admin = f"Dikeluarkan oleh Guru Pembina: {session.get('nama_lengkap')}"
+            if self.con.update_ekskul_registration_status(pendaftaran_id, new_status='Berhenti', catatan_admin=catatan_admin):
                 flash(f"Status pendaftaran (ID: {pendaftaran_id}) diubah menjadi 'Berhenti'.", "success")
             else:
                 flash("Gagal mengubah status pendaftaran.", "danger")
             
-            if ekskul_id_redirect:
+            if ekskul_id_redirect and ekskul_id_redirect.isdigit():
                 return redirect(url_for('kelola_peserta_ekskul_guru', ekskul_id=int(ekskul_id_redirect)))
             return redirect(url_for('dashboard_guru')) # Fallback
+
+        # --- Rute CRUD Materi oleh Guru Pembina ---
+        @self.app.route('/guru/ekskul/<int:ekskul_id>/materi/tambah', methods=['GET', 'POST'])
+        @self.guru_login_required
+        def tambah_materi_ekskul_guru(ekskul_id):
+            is_pembina, ekskul_info = _cek_guru_pembina_ekskul(ekskul_id)
+            if not is_pembina:
+                return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id) if ekskul_info else url_for('dashboard_guru'))
+
+            form_data_repopulate = {'id_ekskul': ekskul_id} 
+
+            if request.method == 'POST':
+                form_data_repopulate.update(request.form) 
+                
+                judul_materi = request.form.get('judul_materi','').strip()
+                deskripsi_materi = request.form.get('deskripsi_materi','').strip()
+                tipe_konten = request.form.get('tipe_konten')
+                path_konten_final = None
+                isi_konten_teks_final = None
+
+                if not judul_materi or not tipe_konten:
+                    flash("Judul Materi dan Tipe Konten wajib diisi.", "danger")
+                else:
+                    save_to_db = False 
+                    if tipe_konten == 'file':
+                        if 'file_konten' not in request.files or request.files['file_konten'].filename == '':
+                            flash('Tidak ada file yang dipilih untuk diunggah (jika tipe file dipilih).', 'warning')
+                        else:
+                            file = request.files['file_konten']
+                            if file and allowed_file(file.filename, self.app.config['ALLOWED_EXTENSIONS']):
+                                filename = secure_filename(file.filename)
+                                upload_path_dir = self.app.config['UPLOAD_FOLDER']
+                                if not os.path.exists(upload_path_dir):
+                                    os.makedirs(upload_path_dir, exist_ok=True)
+                                try:
+                                    file.save(os.path.join(upload_path_dir, filename))
+                                    path_konten_final = filename
+                                    save_to_db = True
+                                    flash(f'File {filename} berhasil diunggah.', 'info')
+                                except Exception as e:
+                                    flash(f'Gagal menyimpan file: {e}', 'danger')
+                            elif file: 
+                                flash('Tipe file tidak diizinkan.', 'danger')
+                    elif tipe_konten in ['link', 'video_embed']:
+                        path_konten_final = request.form.get('path_konten_atau_link_url','').strip()
+                        if not path_konten_final:
+                            flash('URL/Link atau Kode Embed Video wajib diisi untuk tipe ini.', 'danger')
+                        else:
+                            save_to_db = True
+                    elif tipe_konten == 'teks':
+                        isi_konten_teks_final = request.form.get('isi_konten_teks_area','').strip()
+                        if not isi_konten_teks_final:
+                            flash('Isi konten teks wajib diisi untuk tipe ini.', 'danger')
+                        else:
+                            save_to_db = True
+                    else: 
+                        flash('Tipe konten tidak valid.', 'danger')
+
+                    if save_to_db:
+                        data_materi = {
+                            'id_ekskul': ekskul_id,
+                            'judul_materi': judul_materi,
+                            'deskripsi_materi': deskripsi_materi,
+                            'tipe_konten': tipe_konten,
+                            'path_konten_atau_link': path_konten_final,
+                            'isi_konten_teks': isi_konten_teks_final,
+                            'id_pengunggah': session['user_id'] 
+                        }
+                        materi_id = self.con.add_materi_ekskul(data_materi)
+                        if materi_id:
+                            flash("Materi ekstrakurikuler berhasil ditambahkan!", "success")
+                            return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
+                        else:
+                            flash("Gagal menambahkan materi ke database. Periksa log.", "danger")
+            
+            return render_template('guru/materi_ekskul_form_guru.html', 
+                                   action="Tambah", 
+                                   materi_data=form_data_repopulate, 
+                                   ekskul_info=ekskul_info,
+                                   id_ekskul=ekskul_id)
+
+        @self.app.route('/guru/ekskul/<int:ekskul_id>/materi/edit/<int:id_materi_ekskul>', methods=['GET', 'POST'])
+        @self.guru_login_required
+        def edit_materi_ekskul_guru(ekskul_id, id_materi_ekskul):
+            is_pembina, ekskul_info = _cek_guru_pembina_ekskul(ekskul_id)
+            if not is_pembina:
+                 return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id) if ekskul_info else url_for('dashboard_guru'))
+
+            materi_data_lama = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
+            if not materi_data_lama or materi_data_lama['id_ekskul'] != ekskul_id:
+                flash("Materi tidak ditemukan atau tidak sesuai dengan ekskul ini.", "danger")
+                return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
+
+            display_data = materi_data_lama.copy()
+
+            if request.method == 'POST':
+                display_data.update(request.form) 
+                
+                judul_materi = request.form.get('judul_materi','').strip()
+                deskripsi_materi = request.form.get('deskripsi_materi','').strip()
+                tipe_konten_form = request.form.get('tipe_konten')
+
+                data_to_update = {
+                    'id_ekskul': ekskul_id, 
+                    'judul_materi': judul_materi if judul_materi else materi_data_lama['judul_materi'],
+                    'deskripsi_materi': deskripsi_materi,
+                    'tipe_konten': tipe_konten_form if tipe_konten_form else materi_data_lama['tipe_konten']
+                }
+                
+                delete_old_file = False
+                old_file_name_from_db = materi_data_lama.get('path_konten_atau_link') if materi_data_lama.get('tipe_konten') == 'file' else None
+                is_content_valid_overall = True 
+
+                if data_to_update['tipe_konten'] == 'file':
+                    if 'file_konten' in request.files and request.files['file_konten'].filename != '':
+                        file = request.files['file_konten']
+                        if allowed_file(file.filename, self.app.config['ALLOWED_EXTENSIONS']):
+                            if old_file_name_from_db: delete_old_file = True
+                            filename = secure_filename(file.filename)
+                            try:
+                                file.save(os.path.join(self.app.config['UPLOAD_FOLDER'], filename))
+                                data_to_update['path_konten_atau_link'] = filename
+                                data_to_update['isi_konten_teks'] = None
+                                flash(f'File baru {filename} berhasil diunggah.', 'info')
+                            except Exception as e:
+                                flash(f'Gagal menyimpan file: {e}', 'danger'); is_content_valid_overall = False
+                        else:
+                            flash('Tipe file baru tidak diizinkan.', 'danger'); is_content_valid_overall = False
+                    elif materi_data_lama['tipe_konten'] == 'file':
+                         data_to_update['path_konten_atau_link'] = materi_data_lama['path_konten_atau_link']
+                         data_to_update['isi_konten_teks'] = None
+                    elif materi_data_lama['tipe_konten'] != 'file': 
+                        flash('File wajib diunggah jika tipe konten diubah menjadi "file".', 'danger'); is_content_valid_overall = False
+                elif data_to_update['tipe_konten'] in ['link', 'video_embed']:
+                    new_val = request.form.get('path_konten_atau_link_url','').strip()
+                    if not new_val: flash('URL/Link atau Kode Embed wajib diisi.', 'danger'); is_content_valid_overall = False
+                    else:
+                        data_to_update['path_konten_atau_link'] = new_val
+                        data_to_update['isi_konten_teks'] = None
+                        if old_file_name_from_db: delete_old_file = True
+                elif data_to_update['tipe_konten'] == 'teks':
+                    new_val = request.form.get('isi_konten_teks_area','').strip()
+                    if not new_val: flash('Isi konten teks wajib diisi.', 'danger'); is_content_valid_overall = False
+                    else:
+                        data_to_update['isi_konten_teks'] = new_val
+                        data_to_update['path_konten_atau_link'] = None
+                        if old_file_name_from_db: delete_old_file = True
+                
+                if not data_to_update.get('judul_materi') : 
+                    flash("Judul Materi wajib diisi.", "danger"); is_content_valid_overall = False
+
+                if is_content_valid_overall:
+                    if self.con.update_materi_ekskul(id_materi_ekskul, data_to_update):
+                        if delete_old_file and old_file_name_from_db:
+                            try:
+                                file_to_remove = os.path.join(self.app.config['UPLOAD_FOLDER'], old_file_name_from_db)
+                                if os.path.exists(file_to_remove):
+                                    os.remove(file_to_remove)
+                                    flash('File lama berhasil dihapus.', 'info')
+                            except OSError as e: flash(f'Gagal menghapus file lama: {e}', 'warning')
+                        flash("Materi berhasil diperbarui!", "success")
+                        return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
+                    else: 
+                        if not get_flashed_messages(category_filter=["danger"]): 
+                             flash("Gagal memperbarui materi ke database.", "danger")
+                elif not get_flashed_messages(category_filter=["danger"]): 
+                     flash("Gagal memperbarui materi. Pastikan semua field yang relevan terisi.", "danger")
+            
+            if display_data.get('tipe_konten') in ['link', 'video_embed']:
+                display_data['path_konten_atau_link_url'] = display_data.get('path_konten_atau_link')
+            elif display_data.get('tipe_konten') == 'teks':
+                display_data['isi_konten_teks_area'] = display_data.get('isi_konten_teks')
+
+            return render_template('guru/materi_ekskul_form_guru.html', 
+                                   action="Edit", 
+                                   materi_data=display_data, 
+                                   ekskul_info=ekskul_info,
+                                   id_ekskul=ekskul_id, 
+                                   id_materi_ekskul=id_materi_ekskul)
+
+        @self.app.route('/guru/ekskul/<int:ekskul_id>/materi/hapus/<int:id_materi_ekskul>', methods=['POST'])
+        @self.guru_login_required
+        def hapus_materi_ekskul_guru(ekskul_id, id_materi_ekskul):
+            is_pembina, ekskul_info_check = _cek_guru_pembina_ekskul(ekskul_id) # Ambil juga ekskul_info
+            if not is_pembina:
+                return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id) if ekskul_info_check else url_for('dashboard_guru'))
+
+            materi_info = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
+            if not materi_info or materi_info['id_ekskul'] != ekskul_id:
+                flash("Materi tidak ditemukan atau tidak sesuai dengan ekskul ini.", "danger")
+                return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
+
+            materi_info_deleted = self.con.delete_materi_ekskul(id_materi_ekskul)
+            if materi_info_deleted:
+                if materi_info_deleted['tipe_konten'] == 'file' and materi_info_deleted['path_konten_atau_link']:
+                    try:
+                        file_path = os.path.join(self.app.config['UPLOAD_FOLDER'], materi_info_deleted['path_konten_atau_link'])
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            flash(f"File materi '{materi_info_deleted['path_konten_atau_link']}' berhasil dihapus dari server.", 'info')
+                    except OSError as e:
+                        flash(f"Gagal menghapus file fisik: {e}", "warning")
+                flash("Materi berhasil dihapus dari database.", "success")
+            else:
+                flash("Gagal menghapus materi dari database.", "danger")
+            return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
 
         # --- Rute Dashboard Murid (Placeholder) ---
         @self.app.route('/registrasi-murid', methods=['GET'])

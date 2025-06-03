@@ -1,112 +1,84 @@
-{% extends "murid/layout_murid.html" %} {% block title %}Dashboard Murid{% endblock %}
+{% extends "murid/layout_murid.html" %} {% block title %}Dashboard Saya - {{ nama_murid }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Dashboard Murid</h2>
+<div class="container"> <h2 style="color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 0.5em; margin-top: 1.5em;">
+        Dashboard Murid
+    </h2>
     <p>Selamat datang kembali, <strong>{{ nama_murid }}!</strong></p>
     <p>Tahun Ajaran Aktif: <strong>{{ tahun_ajaran_aktif }}</strong></p>
 
-    <hr>
-
-    <div class="mb-4">
-        <h3><i class="fas fa-bullhorn"></i> Pengumuman Terbaru</h3>
+    <div class="kategori-ekskul" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; border-radius: 5px;">
+        <h3 style="color: #333; margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 0.5em;">
+            <i class="fas fa-bullhorn"></i> Pengumuman Terbaru
+        </h3>
         {% if pengumuman_list %}
             {% for pengumuman in pengumuman_list %}
-                <div class="card mb-2 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ pengumuman.judul_pengumuman }}</h5>
-                        <p class="card-text">{{ pengumuman.isi_pengumuman | safe }}</p>
-                        <p class="card-text">
-                            <small class="text-muted">
-                                Dipublikasikan pada: {{ pengumuman.tanggal_publikasi.strftime('%d %B %Y, %H:%M') if pengumuman.tanggal_publikasi else 'N/A' }}
-                                oleh: {{ pengumuman.nama_pembuat | default('Admin') }}
-                            </small>
-                        </p>
-                    </div>
+                <div style="padding: 10px; margin-bottom: 10px; border-left: 4px solid #007bff; background-color: #e7f3ff;">
+                    <h5>{{ pengumuman.judul_pengumuman }}</h5>
+                    <p style="margin-bottom: 5px;">{{ pengumuman.isi_pengumuman | safe }}</p>
+                    <small style="color: #555;">
+                        Dipublikasikan: {{ pengumuman.tanggal_publikasi.strftime('%d %B %Y, %H:%M') if pengumuman.tanggal_publikasi else 'N/A' }}
+                        oleh: {{ pengumuman.nama_pembuat | default('Admin') }}
+                    </small>
                 </div>
             {% endfor %}
         {% else %}
-            <div class="alert alert-info" role="alert">
-                Tidak ada pengumuman baru saat ini.
-            </div>
+            <p>Tidak ada pengumuman baru saat ini.</p>
         {% endif %}
     </div>
 
-    <hr>
-
-    <div class="mb-4">
-        <h3><i class="fas fa-running"></i> Ekstrakurikuler Saya</h3>
+    <div class="kategori-ekskul" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; border-radius: 5px;">
+        <h3 style="color: #333; margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 0.5em;">
+            <i class="fas fa-running"></i> Ekstrakurikuler Saya
+        </h3>
         {% if ekskul_diikuti_list %}
-            <div class="row">
+            <ul class="daftar-ekskul" style="list-style: none; padding-left: 0; margin-top: 10px;">
                 {% for ekskul in ekskul_diikuti_list %}
-                <div class="col-md-6 mb-3">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="card-title mb-0">{{ ekskul.nama_ekskul }}</h5>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Pembina:</strong> {{ ekskul.nama_pembina | default('Belum ada') }}</p>
-                            <p><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ditentukan') }}</p>
-                            <p><strong>Lokasi:</strong> {{ ekskul.lokasi | default('Belum ditentukan') }}</p>
-                            <p><strong>Status Pendaftaran:</strong> 
-                                <span class="badge 
-                                    {% if ekskul.status_pendaftaran == 'Disetujui' or ekskul.status_pendaftaran == 'Terdaftar' %} bg-success 
-                                    {% elif ekskul.status_pendaftaran == 'Menunggu Persetujuan' %} bg-warning text-dark
-                                    {% else %} bg-secondary {% endif %}">
+                    <li class="ekskul-item" style="display: flex; align-items: flex-start; margin-bottom: 15px; padding-bottom:10px; border-bottom: 1px dotted #eee;">
+                        <div style="flex-grow: 1;">
+                            <h5 style="margin-top:0; margin-bottom:5px;">
+                                <a href="{{ url_for('detail_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}" style="text-decoration: none; color: #007bff;">
+                                    {{ ekskul.nama_ekskul }}
+                                </a>
+                                <span style="font-size: 0.8em; padding: 0.2em 0.5em; color: white; border-radius: 3px; margin-left: 5px;
+                                    background-color: {% if ekskul.status_pendaftaran == 'Disetujui' or ekskul.status_pendaftaran == 'Terdaftar' %} #28a745 
+                                                     {% elif ekskul.status_pendaftaran == 'Menunggu Persetujuan' %} #ffc107
+                                                     {% else %} #6c757d {% endif %};">
                                     {{ ekskul.status_pendaftaran }}
                                 </span>
-                            </p>
+                            </h5>
+                            <p style="margin: 2px 0; font-size: 0.9em;"><strong>Pembina:</strong> {{ ekskul.nama_pembina | default('N/A') }}</p>
+                            <p style="margin: 2px 0; font-size: 0.9em;"><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ditentukan') }}</p>
+                            <p style="margin: 2px 0; font-size: 0.9em;"><strong>Lokasi:</strong> {{ ekskul.lokasi | default('N/A') }}</p>
 
                             {% if ekskul.nama_ekskul in materi_per_ekskul and materi_per_ekskul[ekskul.nama_ekskul] %}
-                                <h6 class="mt-3">Materi:</h6>
-                                <ul class="list-group list-group-flush">
-                                    {% for materi in materi_per_ekskul[ekskul.nama_ekskul][:3] %} {# Tampilkan 3 materi terbaru saja #}
-                                        <li class="list-group-item">
-                                            <strong>{{ materi.judul_materi }}</strong> ({{ materi.tipe_konten }})
-                                            <p><small>{{ materi.deskripsi_materi | truncate(50) }}</small></p>
-                                            {% if materi.tipe_konten == 'file' and materi.path_konten_atau_link %}
-                                                <a href="{{ url_for('static', filename='uploads/materi_ekskul/' + materi.path_konten_atau_link) }}" target="_blank" class="btn btn-sm btn-outline-info">Lihat File</a>
-                                            {% elif materi.tipe_konten == 'link' and materi.path_konten_atau_link %}
-                                                <a href="{{ materi.path_konten_atau_link }}" target="_blank" class="btn btn-sm btn-outline-info">Buka Link</a>
-                                            {% elif materi.tipe_konten == 'video_embed' and materi.path_konten_atau_link %}
-                                                 <div class="embed-responsive embed-responsive-16by9 mt-2">
-                                                    {{ materi.path_konten_atau_link | safe }}
-                                                </div>
-                                            {% elif materi.tipe_konten == 'teks' and materi.isi_konten_teks %}
-                                                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#materiTeks{{materi.id_materi_ekskul}}" aria-expanded="false" aria-controls="materiTeks{{materi.id_materi_ekskul}}">
-                                                    Lihat Teks
-                                                </button>
-                                                <div class="collapse mt-2" id="materiTeks{{materi.id_materi_ekskul}}">
-                                                    <div class="card card-body small">
-                                                        {{ materi.isi_konten_teks | safe }}
-                                                    </div>
-                                                </div>
-                                            {% endif %}
-                                        </li>
-                                    {% endfor %}
-                                    {% if materi_per_ekskul[ekskul.nama_ekskul]|length > 3 %}
-                                        <li class="list-group-item text-center">
-                                            <small><a href="#">Lihat semua materi untuk {{ ekskul.nama_ekskul }}...</a></small> {# Link ke halaman detail materi ekskul #}
-                                        </li>
-                                    {% endif %}
-                                </ul>
-                            {% else %}
-                                <p class="text-muted_"><small>Belum ada materi untuk ekskul ini.</small></p>
+                                <div style="margin-top: 8px;">
+                                    <p style="margin-bottom: 3px; font-size: 0.85em;"><strong>Materi Terbaru:</strong></p>
+                                    <ul style="list-style: none; padding-left: 0; font-size: 0.8em;">
+                                        {% for materi in materi_per_ekskul[ekskul.nama_ekskul][:2] %}
+                                            <li style="margin-bottom: 2px;"> &#8227; {{ materi.judul_materi }} ({{ materi.tipe_konten }})</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
                             {% endif %}
                         </div>
-                    </div>
-                </div>
+                        <a href="{{ url_for('detail_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}" class="btn-detail-ekskul" 
+                           style="background-color: #007bff; color: white; text-decoration:none; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9em; white-space: nowrap; align-self: center;">
+                           Lihat Detail
+                        </a>
+                    </li>
                 {% endfor %}
+            </ul>
+             <div style="margin-top: 15px;">
+                 <a href="{{ url_for('ekskul_saya_murid') }}" style="text-decoration: none; color: #007bff; padding: 8px 12px; border: 1px solid #007bff; border-radius: 5px; display: inline-block; margin-right:10px;">Lihat Semua Ekskul Saya</a>
+                 <a href="{{ url_for('lihat_ekskul_murid') }}" style="text-decoration: none; color: #28a745; padding: 8px 12px; border: 1px solid #28a745; border-radius: 5px; display: inline-block;">Daftar Ekskul Baru</a>
             </div>
         {% else %}
-            <div class="alert alert-info" role="alert">
-                Anda belum mengikuti ekstrakurikuler apapun pada tahun ajaran ini.
-                <a href="{{ url_for('lihat_ekskul_murid') }}" class="alert-link">Lihat daftar ekskul tersedia.</a>
-            </div>
+            <p>Anda belum mengikuti ekstrakurikuler apapun pada tahun ajaran ini.</p>
+            <a href="{{ url_for('lihat_ekskul_murid') }}" style="background-color: #28a745; color: white; text-decoration:none; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 1em; display:inline-block;">
+                Daftar Ekstrakurikuler
+            </a>
         {% endif %}
     </div>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-
 </div>
 {% endblock %}

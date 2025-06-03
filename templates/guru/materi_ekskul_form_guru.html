@@ -1,0 +1,129 @@
+{% extends "guru/layout_guru.html" %}
+
+{% set form_title = "Tambah Materi untuk " + ekskul_info.nama_ekskul if action == "Tambah" else "Edit Materi: " + materi_data.judul_materi %}
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .form-control-file {
+        padding: .375rem .75rem;
+    }
+    /* Tambahkan style lain jika perlu */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>{{ form_title }}</h3>
+        <a href="{{ url_for('detail_ekskul_guru', ekskul_id=id_ekskul) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Kembali ke Detail Ekskul
+        </a>
+    </div>
+    <hr>
+
+    <form method="POST" enctype="multipart/form-data" 
+          action="{{ url_for('tambah_materi_ekskul_guru', ekskul_id=id_ekskul) if action == 'Tambah' else url_for('edit_materi_ekskul_guru', ekskul_id=id_ekskul, id_materi_ekskul=id_materi_ekskul) }}">
+        
+        <input type="hidden" name="id_ekskul" value="{{ id_ekskul }}">
+
+        <div class="mb-3">
+            <label for="judul_materi" class="form-label">Judul Materi <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="judul_materi" name="judul_materi" 
+                   value="{{ materi_data.judul_materi if materi_data else '' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="deskripsi_materi" class="form-label">Deskripsi Materi (Opsional)</label>
+            <textarea class="form-control" id="deskripsi_materi" name="deskripsi_materi" rows="3">{{ materi_data.deskripsi_materi if materi_data else '' }}</textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="tipe_konten" class="form-label">Tipe Konten <span class="text-danger">*</span></label>
+            <select class="form-select" id="tipe_konten" name="tipe_konten" required onchange="toggleKontenFields()">
+                <option value="">-- Pilih Tipe --</option>
+                <option value="file" {% if materi_data and materi_data.tipe_konten == 'file' %}selected{% endif %}>File (Dokumen, Gambar, dll.)</option>
+                <option value="link" {% if materi_data and materi_data.tipe_konten == 'link' %}selected{% endif %}>Link Eksternal</option>
+                <option value="video_embed" {% if materi_data and materi_data.tipe_konten == 'video_embed' %}selected{% endif %}>Video Embed (misal: YouTube)</option>
+                <option value="teks" {% if materi_data and materi_data.tipe_konten == 'teks' %}selected{% endif %}>Teks Langsung</option>
+            </select>
+        </div>
+
+        <div id="field_file_konten" class="mb-3" style="display: none;">
+            <label for="file_konten" class="form-label">Unggah File</label>
+            <input type="file" class="form-control form-control-file" id="file_konten" name="file_konten">
+            {% if action == 'Edit' and materi_data and materi_data.tipe_konten == 'file' and materi_data.path_konten_atau_link %}
+            <small class="form-text text-muted">File saat ini: {{ materi_data.path_konten_atau_link }}. Unggah file baru untuk mengganti.</small>
+            {% endif %}
+        </div>
+
+        <div id="field_path_konten_atau_link_url" class="mb-3" style="display: none;">
+            <label for="path_konten_atau_link_url" class="form-label">URL atau Kode Embed <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="path_konten_atau_link_url" name="path_konten_atau_link_url" 
+                   value="{{ materi_data.path_konten_atau_link_url if materi_data and 'path_konten_atau_link_url' in materi_data else (materi_data.path_konten_atau_link if materi_data and materi_data.tipe_konten in ['link', 'video_embed'] else '') }}">
+            <small id="url_help" class="form-text text-muted" style="display: none;">Contoh: https://www.contoh.com atau kode embed dari YouTube.</small>
+        </div>
+        
+        <div id="field_isi_konten_teks_area" class="mb-3" style="display: none;">
+            <label for="isi_konten_teks_area" class="form-label">Isi Konten Teks <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="isi_konten_teks_area" name="isi_konten_teks_area" rows="8">{{ materi_data.isi_konten_teks_area if materi_data and 'isi_konten_teks_area' in materi_data else (materi_data.isi_konten_teks if materi_data and materi_data.tipe_konten == 'teks' else '') }}</textarea>
+        </div>
+
+        <hr>
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> {{ "Simpan Perubahan" if action == "Edit" else "Simpan Materi" }}
+        </button>
+        <a href="{{ url_for('detail_ekskul_guru', ekskul_id=id_ekskul) }}" class="btn btn-secondary">
+            <i class="fas fa-times"></i> Batal
+        </a>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    function toggleKontenFields() {
+        const tipeKonten = document.getElementById('tipe_konten').value;
+        const fieldFile = document.getElementById('field_file_konten');
+        const fieldUrlEmbed = document.getElementById('field_path_konten_atau_link_url');
+        const fieldTeks = document.getElementById('field_isi_konten_teks_area');
+        const urlHelp = document.getElementById('url_help');
+
+        const inputUrlEmbed = document.getElementById('path_konten_atau_link_url');
+        const inputFile = document.getElementById('file_konten');
+        const inputTextarea = document.getElementById('isi_konten_teks_area');
+
+        // Sembunyikan semua dulu
+        fieldFile.style.display = 'none';
+        fieldUrlEmbed.style.display = 'none';
+        fieldTeks.style.display = 'none';
+        urlHelp.style.display = 'none';
+
+        // Setel semua input terkait konten menjadi tidak required dulu
+        if (inputUrlEmbed) inputUrlEmbed.required = false;
+        if (inputFile) inputFile.required = false; // Untuk add, file wajib jika tipe file. Untuk edit, tidak wajib jika sudah ada.
+        if (inputTextarea) inputTextarea.required = false;
+
+
+        if (tipeKonten === 'file') {
+            fieldFile.style.display = 'block';
+            // Untuk 'Tambah', file wajib. Untuk 'Edit', file tidak wajib jika sudah ada file lama.
+            // Logika 'required' untuk file di sisi client bisa kompleks, validasi utama di server.
+            // Jika action 'Tambah', maka file wajib.
+            {% if action == 'Tambah' %}
+            if (inputFile) inputFile.required = true;
+            {% endif %}
+        } else if (tipeKonten === 'link' || tipeKonten === 'video_embed') {
+            fieldUrlEmbed.style.display = 'block';
+            urlHelp.style.display = 'block';
+            if (inputUrlEmbed) inputUrlEmbed.required = true;
+        } else if (tipeKonten === 'teks') {
+            fieldTeks.style.display = 'block';
+            if (inputTextarea) inputTextarea.required = true;
+        }
+    }
+
+    // Panggil saat halaman dimuat untuk setel field yang benar berdasarkan nilai yang sudah ada (untuk edit)
+    document.addEventListener('DOMContentLoaded', toggleKontenFields);
+</script>
+{% endblock %}
