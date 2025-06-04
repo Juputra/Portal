@@ -7,25 +7,75 @@ from datetime import date, datetime, timedelta
 import datetime
 from werkzeug.utils import secure_filename
 from collections import defaultdict
+from abc import ABC, abstractmethod # Untuk konsep abstrak class
 # import pdfkit # Belum digunakan
 
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
-class Portal:
+# Konsep: Class & Inheritance (Base Class untuk Aplikasi Flask)
+class BaseFlaskApplication:
+    """
+    Kelas dasar sederhana untuk aplikasi Flask.
+    Menunjukkan KONSEP PEWARISAN dan dasar untuk POLIMORFISME.
+    """
+    # Konsep: Encapsulation (Atribut _flask_app bersifat 'protected')
+    def __init__(self, app_name):
+        self._flask_app = Flask(app_name)
+        self._app_name = app_name
+        print(f"BaseFlaskApplication '{self._app_name}' initialized.")
+
+    def get_flask_instance(self):
+        """Metode untuk mendapatkan instance Flask (accessor)."""
+        return self._flask_app
+
+    # Konsep: Polymorphism (Metode yang bisa di-override oleh subclass)
+    def application_greeting(self):
+        """Metode yang dapat di-override untuk memberikan salam spesifik aplikasi."""
+        return f"Welcome to the Base Flask Application: {self._app_name}!"
+
+    @abstractmethod # Jika ingin lebih formal, tapi bisa juga konvensi
+    def run_server(self, debug=True, host='0.0.0.0', port=5000):
+        """Metode untuk menjalankan server, bisa di-override."""
+        print(self.application_greeting()) # Memanggil metode polimorfik
+        self._flask_app.run(debug=debug, host=host, port=port)
+
+class Portal(BaseFlaskApplication):
+    """
+    Kelas utama aplikasi Portal Ekstrakurikuler.
+    """
+    # Konsep: Encapsulation (Atribut dan metode internal)
     def __init__(self):
-        self.app = Flask(__name__)
-        # GANTI KUNCI RAHASIA INI DENGAN YANG LEBIH AMAN DAN ACAK!
-        self.app.secret_key = 'ganti_dengan_kunci_rahasia_yang_kuat_dan_unik_98765!' 
-        self.con = Config() # Membuat instance dari Config Anda
+        super().__init__(__name__) # Memanggil __init__ dari BaseFlaskApplication
+        self.app = self.get_flask_instance() # Menggunakan instance Flask dari base class
+
+        self.app.secret_key = 'ganti_dengan_kunci_rahasia_yang_kuat_dan_unik_98765!'
+        self._con = Config() # Instance dari Config (DAL)
+        self._setup_app_config()
+        self._register_context_processors()
         self.routes()
-        self.app.config['UPLOAD_FOLDER'] = os.path.join(self.app.root_path, 'static/uploads/materi_ekskul') 
+        print("Portal application fully initialized.")
+
+    # Konsep: Polymorphism (Overriding metode dari base class)
+    def application_greeting(self):
+        """Memberikan salam spesifik untuk aplikasi Portal."""
+        base_greeting = super().application_greeting() # Opsional: panggil implementasi parent
+        # print(f"DEBUG: Base greeting was: {base_greeting}")
+        return f"Selamat Datang di Portal Ekstrakurikuler Sekolah!"
+
+    def _setup_app_config(self):
+        self.app.config['UPLOAD_FOLDER'] = os.path.join(self.app.root_path, 'static/uploads/materi_ekskul')
         self.app.config['ALLOWED_EXTENSIONS'] = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'}
+        self.app.config['LOGO_UPLOAD_FOLDER'] = os.path.join(self.app.root_path, 'static/uploads/logos')
+        self.app.config['ALLOWED_LOGO_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'}
+        if not os.path.exists(self.app.config['LOGO_UPLOAD_FOLDER']):
+            os.makedirs(self.app.config['LOGO_UPLOAD_FOLDER'], exist_ok=True)
+    def _register_context_processors(self):
         @self.app.context_processor
         def inject_now():
-            from datetime import datetime # Pastikan datetime diimpor di sini jika belum global
-            return {'now': datetime.utcnow()} # atau datetime.now()
+            from datetime import datetime
+            return {'now': datetime.now()}
 
 
 
@@ -76,7 +126,7 @@ class Portal:
         @self.app.route('/testdb')
         def test_db():
             try:
-                if self.con.check_db_connection(): # Menggunakan metode dari Config
+                if self._con.check_db_connection(): # Menggunakan metode dari Config
                     return "Koneksi database berhasil!"
                 else:
                     return "Koneksi database gagal. Periksa log server atau konfigurasi."
@@ -96,7 +146,7 @@ class Portal:
                 username = request.form['username']
                 password = request.form['password']
                 
-                user = self.con.get_user_by_username(username) 
+                user = self._con.get_user_by_username(username) 
                 
                 if user and user.get('password_hash') and check_password_hash(user['password_hash'], password):
                     if not user.get('status_aktif', False): # Jika status_aktif False atau tidak ada
@@ -133,18 +183,18 @@ class Portal:
         @self.app.route('/admin/dashboard')
         @self.admin_login_required
         def dashboard_admin():
-            counts = self.con.get_counts()
+            counts = self._con.get_counts()
             # Ambil data untuk setiap tab
-            gurus = self.con.get_users_by_role('guru')
-            murids = self.con.get_users_by_role('murid')
-            admins = self.con.get_users_by_role('admin')
-            ekskul_list = self.con.get_all_ekskul()
-            list_materi = self.con.get_all_materi_ekskul()
-            pending_registrations = self.con.get_pending_registrations_detailed() # Untuk Admin
-            list_pengumuman = self.con.get_all_pengumuman()
-            absensi_list = self.con.get_all_absensi_ekskul_detailed() # Untuk Admin
+            gurus = self._con.get_users_by_role('guru')
+            murids = self._con.get_users_by_role('murid')
+            admins = self._con.get_users_by_role('admin')
+            ekskul_list = self._con.get_all_ekskul()
+            list_materi = self._con.get_all_materi_ekskul()
+            pending_registrations = self._con.get_pending_registrations_detailed() # Untuk Admin
+            list_pengumuman = self._con.get_all_pengumuman()
+            absensi_list = self._con.get_all_absensi_ekskul_detailed() # Untuk Admin
 
-            raw_absensi_list = self.con.get_all_absensi_ekskul_detailed() 
+            raw_absensi_list = self._con.get_all_absensi_ekskul_detailed() 
             absensi_list_processed = [] # List baru untuk data yang sudah diproses
 
             for absen_item_raw in raw_absensi_list:
@@ -202,9 +252,9 @@ class Portal:
         @self.app.route('/admin/users')
         @self.admin_login_required
         def users_admin():
-            gurus = self.con.get_users_by_role('guru')
-            murids = self.con.get_users_by_role('murid')
-            admins = self.con.get_users_by_role('admin') # Jika Anda ingin menampilkan admin juga
+            gurus = self._con.get_users_by_role('guru')
+            murids = self._con.get_users_by_role('murid')
+            admins = self._con.get_users_by_role('admin') # Jika Anda ingin menampilkan admin juga
             return render_template('admin/users_admin.html', gurus=gurus, murids=murids, admins=admins)
 
         # --- Tambah Pengguna (Admin) ---
@@ -224,13 +274,13 @@ class Portal:
                 
                 if not all([user_data['username'], user_data['password'], user_data['nama_lengkap'], user_data['email'], user_data['peran']]):
                     flash('Semua field yang ditandai bintang (*) wajib diisi.', 'danger')
-                elif self.con.get_user_by_username(user_data['username']): # Cek duplikasi username
+                elif self._con.get_user_by_username(user_data['username']): # Cek duplikasi username
                     flash(f"Username '{user_data['username']}' sudah digunakan.", 'danger')
                 # Anda mungkin ingin menambahkan pengecekan duplikasi email juga
-                # elif self.con.get_user_by_email(user_data['email']):
+                # elif self._con.get_user_by_email(user_data['email']):
                 #     flash(f"Email '{user_data['email']}' sudah digunakan.", 'danger')
                 else:
-                    user_id = self.con.add_user(user_data) # Menggunakan metode dari Config Anda
+                    user_id = self._con.add_user(user_data) # Menggunakan metode dari Config Anda
                     if user_id:
                         flash(f"Pengguna '{user_data['nama_lengkap']}' berhasil ditambahkan dengan ID: {user_id}!", 'success')
                         return redirect(url_for('users_admin'))
@@ -243,7 +293,7 @@ class Portal:
         @self.app.route('/admin/users/edit/<int:user_id>', methods=['GET', 'POST'])
         @self.admin_login_required
         def edit_user_admin(user_id):
-            user_to_edit = self.con.get_user_by_id(user_id)
+            user_to_edit = self._con.get_user_by_id(user_id)
             if not user_to_edit:
                 flash(f"Pengguna dengan ID {user_id} tidak ditemukan.", 'danger')
                 return redirect(url_for('dashboard_admin') + '#pengguna-content')
@@ -272,7 +322,7 @@ class Portal:
                     # Cek duplikasi username/email (kecuali untuk user yang sedang diedit)
                     # Implementasi cek duplikasi ini bisa lebih baik di Config.update_user
                     
-                    if self.con.update_user(user_id, user_data):
+                    if self._con.update_user(user_id, user_data):
                         flash(f"Data pengguna '{user_data['nama_lengkap']}' berhasil diupdate!", 'success')
                         return redirect(url_for('dashboard_admin') + '#pengguna-content')
                     else:
@@ -294,19 +344,19 @@ class Portal:
                 flash("Anda tidak dapat menghapus akun Anda sendiri.", "danger")
                 return redirect(url_for('users_admin'))
 
-            user_to_delete = self.con.get_user_by_id(user_id)
+            user_to_delete = self._con.get_user_by_id(user_id)
             if not user_to_delete:
                  flash(f"Pengguna dengan ID {user_id} tidak ditemukan.", 'danger')
                  return redirect(url_for('users_admin'))
 
             # Khusus: Jangan biarkan admin terakhir dihapus (opsional tapi disarankan)
             if user_to_delete['peran'] == 'admin':
-                admins = self.con.get_users_by_role('admin')
+                admins = self._con.get_users_by_role('admin')
                 if len(admins) <= 1:
                     flash("Tidak dapat menghapus satu-satunya admin.", "danger")
                     return redirect(url_for('users_admin'))
 
-            if self.con.delete_user(user_id):
+            if self._con.delete_user(user_id):
                 flash(f"Pengguna '{user_to_delete['nama_lengkap']}' berhasil dihapus.", 'success')
             else:
                 flash(f"Gagal menghapus pengguna '{user_to_delete['nama_lengkap']}'. Periksa log server.", 'danger')
@@ -316,7 +366,7 @@ class Portal:
         @self.app.route('/admin/ekskul')
         @self.admin_login_required
         def ekskul_admin():
-            ekskul_list = self.con.get_all_ekskul() # Menggunakan metode dari Config Anda
+            ekskul_list = self._con.get_all_ekskul() # Menggunakan metode dari Config Anda
             return render_template('admin/ekskul_admin.html', ekskul_list=ekskul_list)
 
         @self.app.route('/admin/ekskul/add', methods=['GET', 'POST'])
@@ -324,74 +374,215 @@ class Portal:
         def add_ekskul_admin():
             if request.method == 'POST':
                 id_guru_pembina_str = request.form.get('id_guru_pembina')
+                kuota_maksimal_str = request.form.get('kuota_maksimal', '')
+
+                # Kumpulkan data form dasar
                 ekskul_data = {
-                    'nama_ekskul': request.form['nama_ekskul'].strip(),
+                    'nama_ekskul': request.form.get('nama_ekskul','').strip(),
                     'id_guru_pembina': int(id_guru_pembina_str) if id_guru_pembina_str and id_guru_pembina_str.isdigit() else None,
-                    'jadwal_deskripsi': request.form['jadwal_deskripsi'].strip(),
+                    'jadwal_deskripsi': request.form.get('jadwal_deskripsi','').strip(),
                     'lokasi': request.form.get('lokasi','').strip(),
-                    'kuota_maksimal': int(request.form['kuota_maksimal']) if request.form.get('kuota_maksimal','').isdigit() else None,
+                    'kuota_maksimal': int(kuota_maksimal_str) if kuota_maksimal_str.isdigit() else None,
                     'deskripsi': request.form.get('deskripsi','').strip(),
                     'kategori': request.form.get('kategori','').strip(),
-                    'status_aktif': 'status_aktif' in request.form, 
-                    'url_logo_ekskul': request.form.get('url_logo_ekskul','').strip() # Asumsi ada field ini di form
+                    'status_aktif': 'status_aktif' in request.form,
+                    'url_logo_ekskul': None  # Default ke None, akan diisi jika ada file valid
                 }
+
+                # --- AWAL BLOK PENANGANAN UPLOAD LOGO ---
+                if 'logo_file' in request.files:
+                    file_logo = request.files['logo_file']
+                    if file_logo and file_logo.filename != '':  # Ada file yang dipilih
+                        if allowed_file(file_logo.filename, self.app.config['ALLOWED_LOGO_EXTENSIONS']):
+                            logo_filename = secure_filename(file_logo.filename)
+                            
+                            # Pastikan folder upload logo ada (seharusnya sudah dicek saat _setup_app_config)
+                            logo_upload_path = self.app.config['LOGO_UPLOAD_FOLDER']
+                            if not os.path.exists(logo_upload_path):
+                                os.makedirs(logo_upload_path, exist_ok=True)
+                                
+                            save_path = os.path.join(logo_upload_path, logo_filename)
+                            try:
+                                file_logo.save(save_path)
+                                ekskul_data['url_logo_ekskul'] = logo_filename # Simpan nama file ke data
+                                flash(f"Logo '{logo_filename}' berhasil diunggah.", 'info')
+                            except Exception as e:
+                                flash(f"Gagal menyimpan file logo: {e}", 'danger')
+                                # Biarkan ekskul_data['url_logo_ekskul'] tetap None jika penyimpanan gagal
+                        else:
+                            flash('Format file logo tidak diizinkan. Logo tidak diunggah.', 'warning')
+                # --- AKHIR BLOK PENANGANAN UPLOAD LOGO ---
+
+                # Validasi utama (misalnya nama ekskul)
                 if not ekskul_data['nama_ekskul']:
                     flash('Nama Ekstrakurikuler wajib diisi.', 'danger')
+                    # Jika validasi dasar gagal, kirim kembali data form yang sudah diisi
+                    # (kecuali input file yang tidak bisa di-prefill)
+                    list_guru = self._con.get_users_by_role('guru')
+                    # Menggunakan request.form untuk mengisi ulang field teks,
+                    # ekskul_data bisa digunakan untuk data lain seperti status_aktif
+                    # Untuk 'url_logo_ekskul', karena ini 'add', tidak ada yang perlu ditampilkan ulang jika gagal
+                    form_data_repopulate = dict(request.form)
+                    form_data_repopulate['status_aktif'] = 'status_aktif' in request.form # Pastikan status checkbox benar
+                    
+                    return render_template('admin/ekskul_form_admin.html', 
+                                        action='Tambah', 
+                                        ekskul_data=form_data_repopulate, # Kirim data form kembali
+                                        list_guru=list_guru, 
+                                        cancel_url=url_for('dashboard_admin') + '#ekskul-content')
                 else:
-                    ekskul_id = self.con.add_ekskul(ekskul_data) # Menggunakan metode dari Config Anda
+                    # Simpan data ekskul ke database
+                    ekskul_id = self._con.add_ekskul(ekskul_data)
                     if ekskul_id:
                         flash(f"Ekstrakurikuler '{ekskul_data['nama_ekskul']}' berhasil ditambahkan!", 'success')
                         return redirect(url_for('dashboard_admin') + '#ekskul-content')
                     else:
                         flash('Gagal menambahkan ekstrakurikuler. Periksa log server.', 'danger')
-                
-            list_guru = self.con.get_users_by_role('guru') # Menggunakan metode dari Config Anda
-            return render_template('admin/ekskul_form_admin.html', action='Tambah', ekskul_data=None, list_guru=list_guru, cancel_url=url_for('dashboard_admin') + '#ekskul-content')
+                        # Sama seperti di atas, kirim kembali data form jika gagal simpan DB
+                        list_guru = self._con.get_users_by_role('guru')
+                        form_data_repopulate = dict(request.form)
+                        form_data_repopulate['status_aktif'] = 'status_aktif' in request.form
+                        return render_template('admin/ekskul_form_admin.html', 
+                                            action='Tambah', 
+                                            ekskul_data=form_data_repopulate, 
+                                            list_guru=list_guru, 
+                                            cancel_url=url_for('dashboard_admin') + '#ekskul-content')
+
+            # Untuk GET request (saat halaman form pertama kali dibuka)
+            list_guru = self._con.get_users_by_role('guru')
+            return render_template('admin/ekskul_form_admin.html', 
+                                action='Tambah', 
+                                ekskul_data=None, # Tidak ada data awal untuk form tambah
+                                list_guru=list_guru, 
+                                cancel_url=url_for('dashboard_admin') + '#ekskul-content')
+
 
         # --- Edit Ekstrakurikuler (Admin) ---
         @self.app.route('/admin/ekskul/edit/<int:ekskul_id>', methods=['GET', 'POST'])
         @self.admin_login_required
         def edit_ekskul_admin(ekskul_id):
-            ekskul_to_edit = self.con.get_ekskul_by_id(ekskul_id) # Anda perlu buat metode ini di Config
-            if not ekskul_to_edit:
+            # Ambil data ekskul yang akan diedit dari database
+            ekskul_saat_ini = self._con.get_ekskul_by_id(ekskul_id)
+            if not ekskul_saat_ini:
                 flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
                 return redirect(url_for('dashboard_admin') + '#ekskul-content')
+
             if request.method == 'POST':
                 id_guru_pembina_str = request.form.get('id_guru_pembina')
-                ekskul_data = {
-                    'nama_ekskul': request.form['nama_ekskul'].strip(),
+                kuota_maksimal_str = request.form.get('kuota_maksimal', '')
+
+                # Data yang akan diupdate, awalnya tidak termasuk logo
+                ekskul_data_update = {
+                    'nama_ekskul': request.form.get('nama_ekskul','').strip(),
                     'id_guru_pembina': int(id_guru_pembina_str) if id_guru_pembina_str and id_guru_pembina_str.isdigit() else None,
-                    'jadwal_deskripsi': request.form['jadwal_deskripsi'].strip(),
+                    'jadwal_deskripsi': request.form.get('jadwal_deskripsi','').strip(),
                     'lokasi': request.form.get('lokasi','').strip(),
-                    'kuota_maksimal': int(request.form['kuota_maksimal']) if request.form.get('kuota_maksimal','').isdigit() else None,
+                    'kuota_maksimal': int(kuota_maksimal_str) if kuota_maksimal_str.isdigit() else None,
                     'deskripsi': request.form.get('deskripsi','').strip(),
                     'kategori': request.form.get('kategori','').strip(),
-                    'status_aktif': 'status_aktif' in request.form,
-                    'url_logo_ekskul': request.form.get('url_logo_ekskul','').strip()
+                    'status_aktif': 'status_aktif' in request.form
+                    # 'url_logo_ekskul' akan ditangani di bawah
                 }
-                if not ekskul_data['nama_ekskul']:
+
+                logo_baru_filename = None
+                logo_lama_filename = ekskul_saat_ini.get('url_logo_ekskul')
+
+                # Opsi untuk menghapus logo yang sudah ada (jika Anda menambahkan checkbox 'hapus_logo_sekarang' di form)
+                if request.form.get('hapus_logo_sekarang') == '1':
+                    if logo_lama_filename:
+                        path_logo_lama = os.path.join(self.app.config['LOGO_UPLOAD_FOLDER'], logo_lama_filename)
+                        try:
+                            if os.path.exists(path_logo_lama):
+                                os.remove(path_logo_lama)
+                            flash(f"Logo lama '{logo_lama_filename}' berhasil dihapus.", 'info')
+                        except Exception as e:
+                            flash(f"Gagal menghapus file logo lama: {e}", 'warning')
+                    ekskul_data_update['url_logo_ekskul'] = None # Set jadi None di DB
+                    logo_lama_filename = None # Anggap sudah tidak ada untuk logika selanjutnya
+
+                # Handle upload logo baru
+                if 'logo_file' in request.files:
+                    file_logo_baru = request.files['logo_file']
+                    if file_logo_baru and file_logo_baru.filename != '':
+                        if allowed_file(file_logo_baru.filename, self.app.config['ALLOWED_LOGO_EXTENSIONS']):
+                            logo_baru_filename = secure_filename(file_logo_baru.filename)
+                            
+                            # Pastikan folder upload ada
+                            logo_upload_path = self.app.config['LOGO_UPLOAD_FOLDER']
+                            if not os.path.exists(logo_upload_path):
+                                os.makedirs(logo_upload_path, exist_ok=True)
+                                
+                            save_path_baru = os.path.join(logo_upload_path, logo_baru_filename)
+                            try:
+                                file_logo_baru.save(save_path_baru)
+                                ekskul_data_update['url_logo_ekskul'] = logo_baru_filename
+                                flash(f"Logo baru '{logo_baru_filename}' berhasil diunggah.", 'info')
+
+                                # Jika ada logo baru yang diunggah dan ada logo lama (yang belum dihapus oleh checkbox), hapus logo lama
+                                if logo_lama_filename and logo_lama_filename != logo_baru_filename:
+                                    path_logo_lama_untuk_dihapus = os.path.join(self.app.config['LOGO_UPLOAD_FOLDER'], logo_lama_filename)
+                                    if os.path.exists(path_logo_lama_untuk_dihapus):
+                                        try:
+                                            os.remove(path_logo_lama_untuk_dihapus)
+                                            flash(f"Logo lama '{logo_lama_filename}' digantikan dan berhasil dihapus.", 'info')
+                                        except Exception as e:
+                                            flash(f"Gagal menghapus file logo lama saat mengganti: {e}", 'warning')
+                            
+                            except Exception as e:
+                                flash(f"Gagal menyimpan file logo baru: {e}", 'danger')
+                                # Jika gagal simpan, jangan set ekskul_data_update['url_logo_ekskul']
+                                # Biarkan menggunakan logo lama atau None jika sudah dihapus via checkbox
+                                if 'url_logo_ekskul' in ekskul_data_update: # Hapus jika sudah terlanjur di-set karena error
+                                    del ekskul_data_update['url_logo_ekskul']
+                        
+                        elif file_logo_baru.filename != '': # Ada file tapi tidak diizinkan
+                            flash('Format file logo baru tidak diizinkan. Logo tidak diubah.', 'warning')
+                
+                # Validasi nama ekskul
+                if not ekskul_data_update['nama_ekskul']:
                     flash('Nama Ekstrakurikuler wajib diisi.', 'danger')
+                    # Jika validasi gagal, siapkan data untuk render ulang form
+                    # Ambil data terbaru dari DB + apa yang sudah diinput di form
+                    # Ini penting agar field 'url_logo_ekskul' menampilkan logo yang benar
+                    data_untuk_form = ekskul_saat_ini.copy()
+                    data_untuk_form.update(ekskul_data_update) # Timpa dengan perubahan dari form
+                    if 'url_logo_ekskul' in ekskul_data_update: # Jika logo diupdate atau dihapus
+                        data_untuk_form['url_logo_ekskul'] = ekskul_data_update['url_logo_ekskul']
+                    # Jika tidak ada perubahan logo, url_logo_ekskul dari ekskul_saat_ini akan tetap dipakai
+
+                    list_guru = self._con.get_users_by_role('guru')
+                    return render_template('admin/ekskul_form_admin.html', action='Edit', ekskul_data=data_untuk_form, list_guru=list_guru, cancel_url=url_for('dashboard_admin') + '#ekskul-content')
                 else:
-                    if self.con.update_ekskul(ekskul_id, ekskul_data): # Anda perlu buat metode ini di Config
-                        flash(f"Data Ekstrakurikuler '{ekskul_data['nama_ekskul']}' berhasil diupdate!", 'success')
+                    # Lakukan update ke database
+                    if self._con.update_ekskul(ekskul_id, ekskul_data_update):
+                        flash(f"Data Ekstrakurikuler '{ekskul_data_update['nama_ekskul']}' berhasil diupdate!", 'success')
                         return redirect(url_for('dashboard_admin') + '#ekskul-content')
                     else:
                         flash('Gagal mengupdate data ekstrakurikuler. Periksa log server.', 'danger')
-                ekskul_to_edit.update(ekskul_data)
-                
-            list_guru = self.con.get_users_by_role('guru')
-            return render_template('admin/ekskul_form_admin.html', action='Edit', ekskul_data=ekskul_to_edit, list_guru=list_guru, cancel_url=url_for('dashboard_admin') + '#ekskul-content')
+                        # Sama seperti di atas, siapkan data untuk render ulang
+                        data_untuk_form = ekskul_saat_ini.copy()
+                        data_untuk_form.update(ekskul_data_update)
+                        if 'url_logo_ekskul' in ekskul_data_update:
+                            data_untuk_form['url_logo_ekskul'] = ekskul_data_update['url_logo_ekskul']
+
+                        list_guru = self._con.get_users_by_role('guru')
+                        return render_template('admin/ekskul_form_admin.html', action='Edit', ekskul_data=data_untuk_form, list_guru=list_guru, cancel_url=url_for('dashboard_admin') + '#ekskul-content')
+
+            # Untuk GET request, tampilkan data ekskul yang sudah ada
+            list_guru = self._con.get_users_by_role('guru')
+            return render_template('admin/ekskul_form_admin.html', action='Edit', ekskul_data=ekskul_saat_ini, list_guru=list_guru, cancel_url=url_for('dashboard_admin') + '#ekskul-content')
+
 
         # --- Hapus Ekstrakurikuler (Admin) ---
         @self.app.route('/admin/ekskul/delete/<int:ekskul_id>', methods=['POST'])
         @self.admin_login_required
         def delete_ekskul_admin(ekskul_id):
-            ekskul_to_delete = self.con.get_ekskul_by_id(ekskul_id) # Anda perlu buat metode ini di Config
+            ekskul_to_delete = self._con.get_ekskul_by_id(ekskul_id) # Anda perlu buat metode ini di Config
             if not ekskul_to_delete:
                 flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.",'danger')
                 return redirect(url_for('ekskul_admin'))
 
-            if self.con.delete_ekskul(ekskul_id): # Anda perlu buat metode ini di Config
+            if self._con.delete_ekskul(ekskul_id): # Anda perlu buat metode ini di Config
                 flash(f"Ekstrakurikuler '{ekskul_to_delete['nama_ekskul']}' berhasil dihapus.", 'success')
             else:
                 flash(f"Gagal menghapus ekstrakurikuler '{ekskul_to_delete['nama_ekskul']}'. Mungkin masih ada data terkait (murid terdaftar). Periksa log server.", 'danger')
@@ -401,7 +592,7 @@ class Portal:
         @self.app.route('/admin/ekskul/detail/<int:ekskul_id>')
         @self.admin_login_required
         def ekskul_detail_admin(ekskul_id):
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id) # Asumsi metode ini sudah ada
+            ekskul_info = self._con.get_ekskul_by_id(ekskul_id) # Asumsi metode ini sudah ada
             if not ekskul_info:
                 flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
                 return redirect(url_for('ekskul_admin'))
@@ -411,8 +602,8 @@ class Portal:
             # Anda mungkin perlu logika lebih canggih untuk menentukan tahun ajaran aktif.
             current_tahun_ajaran = "2024/2025" # GANTI DENGAN LOGIKA TAHUN AJARAN AKTIF ANDA
             
-            members = self.con.get_members_of_ekskul(ekskul_id, current_tahun_ajaran)
-            list_materi_ekskul = self.con.get_materi_by_ekskul_id(ekskul_id) 
+            members = self._con.get_members_of_ekskul(ekskul_id, current_tahun_ajaran)
+            list_materi_ekskul = self._con.get_materi_by_ekskul_id(ekskul_id) 
             return render_template('admin/ekskul_detail_admin.html', 
                                    ekskul_info=ekskul_info, 
                                    members=members,
@@ -423,7 +614,7 @@ class Portal:
         @self.app.route('/admin/ekskul/<int:ekskul_id>/register', methods=['GET', 'POST'])
         @self.admin_login_required
         def register_student_ekskul_admin(ekskul_id):
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+            ekskul_info = self._con.get_ekskul_by_id(ekskul_id)
             if not ekskul_info:
                 flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
                 return redirect(url_for('dashboard_admin') + '#ekskul-content')
@@ -440,7 +631,7 @@ class Portal:
                         catatan_pendaftar = f"Didaftarkan oleh Admin: {session.get('nama_lengkap')}"
                         
                         # Panggil metode yang sudah diupdate di Config
-                        hasil_pendaftaran = self.con.register_student_for_ekskul(
+                        hasil_pendaftaran = self._con.register_student_for_ekskul(
                             murid_id_to_register, 
                             ekskul_id, 
                             tahun_ajaran, 
@@ -449,13 +640,13 @@ class Portal:
                         )
 
                         if isinstance(hasil_pendaftaran, int): # Berhasil, mengembalikan ID pendaftaran
-                            murid_info = self.con.get_user_by_id(murid_id_to_register)
+                            murid_info = self._con.get_user_by_id(murid_id_to_register)
                             flash(f"Murid '{murid_info['nama_lengkap'] if murid_info else 'ID: '+str(murid_id_to_register)}' berhasil didaftarkan ke ekskul '{ekskul_info['nama_ekskul']}'.", 'success')
                             return redirect(url_for('ekskul_detail_admin', ekskul_id=ekskul_id))
                         elif hasil_pendaftaran == "KUOTA_PENUH":
                             flash(f"Gagal mendaftarkan murid. Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh.", "warning")
                         elif hasil_pendaftaran == "SUDAH_TERDAFTAR":
-                            murid_info = self.con.get_user_by_id(murid_id_to_register) # Ambil info murid untuk pesan
+                            murid_info = self._con.get_user_by_id(murid_id_to_register) # Ambil info murid untuk pesan
                             flash(f"Gagal mendaftarkan murid '{murid_info['nama_lengkap'] if murid_info else 'ID: '+str(murid_id_to_register)}'. Murid tersebut sudah memiliki record pendaftaran di ekskul '{ekskul_info['nama_ekskul']}' untuk tahun ajaran ini.", "warning")
                         elif hasil_pendaftaran == "EKSKUL_NOT_FOUND": # Meskipun sudah dicek di awal, ini untuk konsistensi
                             flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan saat proses pendaftaran.", 'danger')
@@ -475,8 +666,8 @@ class Portal:
 
             # Bagian GET request
             # Tentukan tahun ajaran aktif untuk dropdown dan filter
-            current_tahun_ajaran = self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025" # GANTI INI
-            available_students = self.con.get_all_active_murid_exclude_ekskul(ekskul_id, current_tahun_ajaran)
+            current_tahun_ajaran = self._con.get_tahun_ajaran_aktif() if hasattr(self._con, 'get_tahun_ajaran_aktif') else "2024/2025" # GANTI INI
+            available_students = self._con.get_all_active_murid_exclude_ekskul(ekskul_id, current_tahun_ajaran)
             
             return render_template('admin/register_student_ekskul_form.html', 
                                    ekskul_info=ekskul_info, 
@@ -492,10 +683,10 @@ class Portal:
             ekskul_id_redirect = request.form.get('ekskul_id_redirect')
 
             # Anda mungkin ingin mengambil info pendaftaran untuk nama murid, dll. untuk pesan flash
-            # pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id) 
+            # pendaftaran_info = self._con.get_pendaftaran_ekskul_by_id(pendaftaran_id) 
             # (perlu buat metode get_pendaftaran_ekskul_by_id jika ingin info detail)
 
-            if self.con.update_ekskul_registration_status(pendaftaran_id, new_status='Berhenti'):
+            if self._con.update_ekskul_registration_status(pendaftaran_id, new_status='Berhenti'):
                 flash(f"Anggota ekskul (Pendaftaran ID: {pendaftaran_id}) telah dikeluarkan (status diubah menjadi 'Berhenti').", 'success')
             else:
                 flash(f"Gagal mengeluarkan anggota ekskul. Periksa log server.", 'danger')
@@ -508,7 +699,7 @@ class Portal:
         @self.app.route('/admin/materi_ekskul')
         @self.admin_login_required
         def materi_ekskul_admin():
-            list_materi = self.con.get_all_materi_ekskul()
+            list_materi = self._con.get_all_materi_ekskul()
             return render_template('admin/materi_ekskul_admin.html', list_materi=list_materi)
 
         @self.app.route('/admin/materi_ekskul/tambah', methods=['GET', 'POST'])
@@ -592,14 +783,14 @@ class Portal:
                             'isi_konten_teks': isi_konten_teks_final,
                             'id_pengunggah': session['user_id']
                         }
-                        materi_id = self.con.add_materi_ekskul(data_materi)
+                        materi_id = self._con.add_materi_ekskul(data_materi)
                         if materi_id:
                             flash("Materi ekstrakurikuler berhasil ditambahkan!", "success")
                             return redirect(url_for('dashboard_admin') + '#materi-content')
                         else:
                             flash("Gagal menambahkan materi ke database. Periksa log server.", "danger")
             
-            list_ekskul = self.con.get_all_ekskul()
+            list_ekskul = self._con.get_all_ekskul()
             return render_template('admin/materi_ekskul_form_admin.html', 
                                    action="Tambah", 
                                    materi_data=request.form if request.method == 'POST' else None, # Kirim data form kembali jika ada error
@@ -608,7 +799,7 @@ class Portal:
         @self.app.route('/admin/materi_ekskul/edit/<int:id_materi_ekskul>', methods=['GET', 'POST'])
         @self.admin_login_required
         def edit_materi_ekskul_admin(id_materi_ekskul):
-            materi_data_lama = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
+            materi_data_lama = self._con.get_materi_ekskul_by_id(id_materi_ekskul)
             if not materi_data_lama:
                 flash("Materi ekstrakurikuler tidak ditemukan.", "danger")
                 return redirect(url_for('dashboard_admin') + '#materi-content')
@@ -657,7 +848,7 @@ class Portal:
                     elif materi_data_lama['tipe_konten'] != 'file' and ('file_konten' not in request.files or request.files['file_konten'].filename == ''):
                          flash('File wajib diunggah jika tipe konten adalah file.', 'danger')
                          # Kembalikan ke form dengan data yang sudah diisi
-                         list_ekskul = self.con.get_all_ekskul()
+                         list_ekskul = self._con.get_all_ekskul()
                          return render_template('admin/materi_ekskul_form_admin.html', 
                                                action="Edit", materi_data=request.form, # Kirim data form kembali
                                                list_ekskul=list_ekskul, id_materi_ekskul=id_materi_ekskul, cancel_url=url_for('dashboard_admin') + '#materi-content')
@@ -694,7 +885,7 @@ class Portal:
                 elif data_to_update['tipe_konten'] == 'teks' and not data_to_update.get('isi_konten_teks'): is_content_valid = False
 
 
-                if is_content_valid and self.con.update_materi_ekskul(id_materi_ekskul, data_to_update):
+                if is_content_valid and self._con.update_materi_ekskul(id_materi_ekskul, data_to_update):
                     if delete_old_file and old_file_path:
                         try:
                             if os.path.exists(old_file_path):
@@ -710,7 +901,7 @@ class Portal:
                      flash("Gagal memperbarui materi. Periksa log server.", "danger")
                 
                 # Jika gagal, kembalikan ke form dengan data yang sudah diisi
-                list_ekskul = self.con.get_all_ekskul()
+                list_ekskul = self._con.get_all_ekskul()
                 # Kirim data form yang terakhir diinput, bukan data_to_update yang mungkin sudah dimodifikasi
                 form_data_kembali = dict(request.form) 
                 form_data_kembali['path_konten_atau_link'] = materi_data_lama.get('path_konten_atau_link') # Jaga path file lama jika tidak diubah
@@ -722,7 +913,7 @@ class Portal:
                                        list_ekskul=list_ekskul, id_materi_ekskul=id_materi_ekskul,cancel_url=url_for('dashboard_admin') + '#materi-content')
 
 
-            list_ekskul = self.con.get_all_ekskul()
+            list_ekskul = self._con.get_all_ekskul()
             # Untuk form edit, materi_data_lama sudah berisi semua field dari database
             # Termasuk path_konten_atau_link dan isi_konten_teks yang benar
             return render_template('admin/materi_ekskul_form_admin.html', 
@@ -735,7 +926,7 @@ class Portal:
         @self.app.route('/admin/materi_ekskul/hapus/<int:id_materi_ekskul>', methods=['POST'])
         @self.admin_login_required
         def hapus_materi_ekskul_admin(id_materi_ekskul):
-            materi_info = self.con.delete_materi_ekskul(id_materi_ekskul)
+            materi_info = self._con.delete_materi_ekskul(id_materi_ekskul)
             if materi_info:
                 # Jika materi adalah file, hapus file fisiknya
                 if materi_info['tipe_konten'] == 'file' and materi_info['path_konten_atau_link']:
@@ -755,7 +946,7 @@ class Portal:
         @self.admin_login_required
         def kelola_pendaftaran_ekskul_admin():
                 # Admin melihat semua pendaftaran yang menunggu persetujuan
-                pending_registrations = self.con.get_pending_registrations_detailed()
+                pending_registrations = self._con.get_pending_registrations_detailed()
                 return render_template('admin/kelola_pendaftaran_ekskul.html', 
                                        pending_registrations=pending_registrations,
                                        judul_halaman="Kelola Semua Pendaftaran Ekskul")
@@ -774,22 +965,22 @@ class Portal:
                 # untuk kasus 'Disetujui'.
 
                 # Cek kuota sebelum menyetujui
-                pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id) # Buat metode ini jika belum ada
+                pendaftaran_info = self._con.get_pendaftaran_ekskul_by_id(pendaftaran_id) # Buat metode ini jika belum ada
                 if not pendaftaran_info:
                     flash("Data pendaftaran tidak ditemukan.", "danger")
                     return redirect(url_for('kelola_pendaftaran_ekskul_admin'))
 
-                ekskul_info = self.con.get_ekskul_by_id(pendaftaran_info['id_ekskul'])
+                ekskul_info = self._con.get_ekskul_by_id(pendaftaran_info['id_ekskul'])
                 if ekskul_info and ekskul_info.get('kuota_maksimal') is not None:
-                    jumlah_peserta_aktif = self.con.count_active_members_ekskul(pendaftaran_info['id_ekskul'], pendaftaran_info['tahun_ajaran']) # Buat metode ini
+                    jumlah_peserta_aktif = self._con.count_active_members_ekskul(pendaftaran_info['id_ekskul'], pendaftaran_info['tahun_ajaran']) # Buat metode ini
                     if jumlah_peserta_aktif >= ekskul_info['kuota_maksimal']:
                         flash(f"Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh. Pendaftaran tidak dapat disetujui.", "warning")
                         # Otomatis tolak jika kuota penuh saat approval
-                        self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', f"Ditolak otomatis karena kuota penuh saat approval oleh Admin: {session.get('nama_lengkap')}")
+                        self._con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', f"Ditolak otomatis karena kuota penuh saat approval oleh Admin: {session.get('nama_lengkap')}")
                         return redirect(request.referrer or url_for('kelola_pendaftaran_ekskul_admin'))
 
 
-                if self.con.update_ekskul_registration_status(pendaftaran_id, 'Disetujui', catatan):
+                if self._con.update_ekskul_registration_status(pendaftaran_id, 'Disetujui', catatan):
                     flash('Pendaftaran berhasil disetujui.', 'success')
                 else:
                     flash('Gagal menyetujui pendaftaran.', 'danger')
@@ -801,7 +992,7 @@ class Portal:
                 # Anda bisa menambahkan field alasan penolakan di form jika mau
                 alasan = request.form.get('alasan_penolakan', 'Ditolak oleh Admin.')
                 catatan = f"{alasan} (Admin: {session.get('nama_lengkap')})"
-                if self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', catatan):
+                if self._con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', catatan):
                     flash('Pendaftaran berhasil ditolak.', 'success')
                 else:
                     flash('Gagal menolak pendaftaran.', 'danger')
@@ -812,7 +1003,7 @@ class Portal:
         @self.admin_login_required
         def pengumuman_admin():
             # Ambil semua pengumuman untuk ditampilkan
-            list_pengumuman = self.con.get_all_pengumuman()
+            list_pengumuman = self._con.get_all_pengumuman()
             return render_template('admin/pengumuman_admin.html', list_pengumuman=list_pengumuman)
 
         @self.app.route('/admin/pengumuman/tambah', methods=['GET', 'POST'])
@@ -844,7 +1035,7 @@ class Portal:
                         'target_peran': target_peran_db, # Jika "" jadikan None
                         'target_ekskul_id': target_ekskul_id
                     }
-                    pengumuman_id = self.con.add_pengumuman(data_pengumuman)
+                    pengumuman_id = self._con.add_pengumuman(data_pengumuman)
                     if pengumuman_id:
                         flash("Pengumuman berhasil ditambahkan!", "success")
                         return redirect(url_for('pengumuman_admin'))
@@ -855,7 +1046,7 @@ class Portal:
             # Jika target_peran adalah 'semua', maka tidak perlu pilih kelas/ekskul
             # Jika target_peran adalah 'murid' atau 'guru', bisa jadi ada filter per kelas/ekskul
          # Asumsi metode ini sudah ada
-            list_ekskul = self.con.get_all_ekskul() # Asumsi metode ini sudah ada
+            list_ekskul = self._con.get_all_ekskul() # Asumsi metode ini sudah ada
             
             return render_template('admin/pengumuman_form_admin.html', 
                                    action="Tambah", 
@@ -866,7 +1057,7 @@ class Portal:
         @self.app.route('/admin/pengumuman/edit/<int:id_pengumuman>', methods=['GET', 'POST'])
         @self.admin_login_required
         def edit_pengumuman_admin(id_pengumuman):
-            pengumuman_to_edit = self.con.get_pengumuman_by_id(id_pengumuman)
+            pengumuman_to_edit = self._con.get_pengumuman_by_id(id_pengumuman)
             if not pengumuman_to_edit:
                 flash(f"Pengumuman dengan ID {id_pengumuman} tidak ditemukan.", "danger")
                 return redirect(url_for('dashboard_admin') + '#pengumuman-content')
@@ -904,7 +1095,7 @@ class Portal:
                         'target_ekskul_id': target_ekskul_id
                         # id_pembuat dan tanggal_publikasi tidak diubah saat edit
                     }
-                    if self.con.update_pengumuman(id_pengumuman, data_pengumuman_update):
+                    if self._con.update_pengumuman(id_pengumuman, data_pengumuman_update):
                         flash("Pengumuman berhasil diperbarui!", "success")
                         return redirect(url_for('dashboard_admin') + '#pengumuman-content')
                     else:
@@ -914,7 +1105,7 @@ class Portal:
                         current_form_data['target_ekskul_id'] = target_ekskul_id
                 
                 # Jika POST gagal atau validasi gagal, render form lagi)
-                list_ekskul = self.con.get_all_ekskul()
+                list_ekskul = self._con.get_all_ekskul()
                 return render_template('admin/pengumuman_form_admin.html', 
                                    action="Edit", 
                                    pengumuman_data=current_form_data if 'current_form_data' in locals() else pengumuman_to_edit, 
@@ -923,7 +1114,7 @@ class Portal:
                                    cancel_url=url_for('dashboard_admin') + '#pengumuman-content') # Penting untuk action form
 
             # Untuk GET request)
-            list_ekskul = self.con.get_all_ekskul()
+            list_ekskul = self._con.get_all_ekskul()
             return render_template('admin/pengumuman_form_admin.html', 
                                    action="Edit", 
                                    pengumuman_data=pengumuman_to_edit, 
@@ -934,10 +1125,10 @@ class Portal:
         @self.admin_login_required
         def hapus_pengumuman_admin(id_pengumuman):
             # Ambil judul untuk pesan flash sebelum dihapus
-            pengumuman_to_delete = self.con.get_pengumuman_by_id(id_pengumuman)
+            pengumuman_to_delete = self._con.get_pengumuman_by_id(id_pengumuman)
             judul_pengumuman = pengumuman_to_delete['judul_pengumuman'] if pengumuman_to_delete else f"ID {id_pengumuman}"
 
-            if self.con.delete_pengumuman(id_pengumuman):
+            if self._con.delete_pengumuman(id_pengumuman):
                 flash(f"Pengumuman '{judul_pengumuman}' berhasil dihapus.", "success")
             else:
                 flash(f"Gagal menghapus pengumuman '{judul_pengumuman}'.", "danger")
@@ -949,7 +1140,7 @@ class Portal:
         def list_absensi_ekskul_admin():
             # Tambahkan filter jika perlu dari request.args
             # Untuk contoh, kita ambil semua
-            absensi_list = self.con.get_all_absensi_ekskul_detailed()
+            absensi_list = self._con.get_all_absensi_ekskul_detailed()
             return render_template('admin/absensi_ekskul_list.html', absensi_list=absensi_list)
         
         @self.app.route('/admin/absensi_ekskul/manage', methods=['GET', 'POST']) 
@@ -964,13 +1155,13 @@ class Portal:
                 'id_ekskul': None,
                 'status_kehadiran': 'Hadir', # Default untuk Tambah
                 'tanggal_kegiatan': date.today().isoformat(),
-                'tahun_ajaran': self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025",
+                'tahun_ajaran': self._con.get_tahun_ajaran_aktif() if hasattr(self._con, 'get_tahun_ajaran_aktif') else "2024/2025",
                 'jam_mulai_kegiatan': '',
                 'catatan': ''
             }
             
             # Inisialisasi default_tahun_ajaran_val di sini
-            default_tahun_ajaran_val = self.con.get_tahun_ajaran_aktif() if hasattr(self.con, 'get_tahun_ajaran_aktif') else "2024/2025"
+            default_tahun_ajaran_val = self._con.get_tahun_ajaran_aktif() if hasattr(self._con, 'get_tahun_ajaran_aktif') else "2024/2025"
             default_tanggal_untuk_form = date.today().isoformat() # Dipakai untuk GET Tambah
             
             # Data asli dari DB (hanya relevan untuk mode Edit)
@@ -978,7 +1169,7 @@ class Portal:
 
             if action == "Edit":
                 try:
-                    db_entry = self.con.get_absensi_entry_for_edit(id_pendaftaran_ekskul, tanggal_kegiatan_str)
+                    db_entry = self._con.get_absensi_entry_for_edit(id_pendaftaran_ekskul, tanggal_kegiatan_str)
                     if db_entry:
                         original_db_data_for_edit = dict(db_entry) # Simpan data asli untuk POST error
                         form_data['id_murid'] = db_entry.get('id_murid')
@@ -1061,12 +1252,12 @@ class Portal:
 
                     current_id_pendaftaran_to_save = id_pendaftaran_ekskul 
                     if action == "Tambah":
-                        current_id_pendaftaran_to_save = self.con.get_pendaftaran_ekskul_id(
+                        current_id_pendaftaran_to_save = self._con.get_pendaftaran_ekskul_id(
                             id_murid_for_logic, id_ekskul_for_logic, tahun_ajaran_for_logic
                         )
                     
                     if current_id_pendaftaran_to_save:
-                        if self.con.save_absensi_ekskul(
+                        if self._con.save_absensi_ekskul(
                             current_id_pendaftaran_to_save, 
                             tanggal_kegiatan_for_save, 
                             submitted_status_kehadiran, 
@@ -1094,8 +1285,8 @@ class Portal:
                 form_data.setdefault('catatan', '')
                 form_data.setdefault('jam_mulai_kegiatan', '')
 
-            list_ekskul = self.con.get_all_ekskul() 
-            all_murid = self.con.get_all_active_murid() if hasattr(self.con, 'get_all_active_murid') else self.con.get_users_by_role('murid')
+            list_ekskul = self._con.get_all_ekskul() 
+            all_murid = self._con.get_all_active_murid() if hasattr(self._con, 'get_all_active_murid') else self._con.get_users_by_role('murid')
                 
             return render_template('admin/absensi_ekskul_form_admin.html', 
                                 action=action, 
@@ -1113,7 +1304,7 @@ class Portal:
         @self.app.route('/admin/absensi_ekskul/hapus/<int:id_absensi_ekskul>', methods=['POST'])
         @self.admin_login_required
         def hapus_absensi_ekskul_admin(id_absensi_ekskul):
-            if self.con.delete_absensi_ekskul(id_absensi_ekskul):
+            if self._con.delete_absensi_ekskul(id_absensi_ekskul):
                 flash("Entri absensi berhasil dihapus.", "success")
             else:
                 flash("Gagal menghapus entri absensi.", "danger")
@@ -1125,8 +1316,8 @@ class Portal:
         def _cek_guru_pembina_ekskul(ekskul_id_to_check): # Jika nested function di routes()
             """Helper untuk cek apakah guru yang login adalah pembina ekskul_id_to_check."""
             guru_id_session = session.get('user_id')
-            # 'self.con' merujuk pada instance Config dari objek Portal
-            ekskul = self.con.get_ekskul_by_id(ekskul_id_to_check) 
+            # 'self._con' merujuk pada instance Config dari objek Portal
+            ekskul = self._con.get_ekskul_by_id(ekskul_id_to_check) 
             if not ekskul:
                 flash(f"Ekstrakurikuler dengan ID {ekskul_id_to_check} tidak ditemukan.", "danger")
                 return False, None 
@@ -1141,16 +1332,16 @@ class Portal:
             guru_id = session.get('user_id')
             nama_guru = session.get('nama_lengkap')
             # Mengambil pengumuman untuk guru (misalnya, yang targetnya 'semua' atau 'guru')
-            info_terbaru_guru = self.con.get_pengumuman_for_guru(guru_id) # Pastikan metode ini ada di Config
+            info_terbaru_guru = self._con.get_pengumuman_for_guru(guru_id) # Pastikan metode ini ada di Config
             
-            jadwal_ekskul_guru = self.con.get_ekskul_by_pembina(guru_id)
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() # Pastikan metode ini ada
+            jadwal_ekskul_guru = self._con.get_ekskul_by_pembina(guru_id)
+            tahun_ajaran_aktif = self._con.get_tahun_ajaran_aktif() # Pastikan metode ini ada
             
-            murid_untuk_absen = self.con.get_murid_options_for_guru_absen(guru_id, tahun_ajaran_aktif) # Pastikan metode ini ada
+            murid_untuk_absen = self._con.get_murid_options_for_guru_absen(guru_id, tahun_ajaran_aktif) # Pastikan metode ini ada
             
             # Ambil pendaftaran yang menunggu persetujuan untuk ekskul yang dibina guru ini
-            pending_registrations_guru = self.con.get_pending_registrations_detailed(id_guru_pembina=guru_id) # Pastikan metode ini ada
-            ekskul_list_semua = self.con.get_all_ekskul() # Ambil semua ekskul
+            pending_registrations_guru = self._con.get_pending_registrations_detailed(id_guru_pembina=guru_id) # Pastikan metode ini ada
+            ekskul_list_semua = self._con.get_all_ekskul() # Ambil semua ekskul
             return render_template('guru/dashboard_guru.html', 
                                    nama_guru=nama_guru,
                                    jadwal_ekskul=jadwal_ekskul_guru,
@@ -1165,7 +1356,7 @@ class Portal:
         @self.app.route('/guru/ekskul/semua')
         @self.guru_login_required
         def list_all_ekskul_guru():
-            ekskul_list = self.con.get_all_ekskul() 
+            ekskul_list = self._con.get_all_ekskul() 
             return render_template('guru/list_semua_ekskul.html', 
                                    ekskul_list=ekskul_list, 
                                    nama_guru=session.get('nama_lengkap'))
@@ -1174,15 +1365,15 @@ class Portal:
         @self.guru_login_required
         def detail_ekskul_guru(ekskul_id):
             guru_id = session.get('user_id')
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+            ekskul_info = self._con.get_ekskul_by_id(ekskul_id)
 
             if not ekskul_info:
                 flash(f"Ekstrakurikuler dengan ID {ekskul_id} tidak ditemukan.", 'danger')
                 return redirect(url_for('list_all_ekskul_guru'))
 
-            materi_list = self.con.get_materi_by_ekskul_id(ekskul_id)
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
-            members = self.con.get_members_of_ekskul(ekskul_id, tahun_ajaran_aktif)
+            materi_list = self._con.get_materi_by_ekskul_id(ekskul_id)
+            tahun_ajaran_aktif = self._con.get_tahun_ajaran_aktif()
+            members = self._con.get_members_of_ekskul(ekskul_id, tahun_ajaran_aktif)
             is_pembina = (guru_id == ekskul_info.get('id_guru_pembina'))
 
             return render_template('guru/detail_ekskul_guru.html',
@@ -1203,7 +1394,7 @@ class Portal:
                 status_kehadiran = request.form.get('status_kehadiran')
                 tanggal_kegiatan = request.form.get('tanggal_kegiatan')
                 # Ambil tahun ajaran dari form, atau default ke tahun ajaran aktif
-                tahun_ajaran = request.form.get('tahun_ajaran') or self.con.get_tahun_ajaran_aktif()
+                tahun_ajaran = request.form.get('tahun_ajaran') or self._con.get_tahun_ajaran_aktif()
                 
                 if not all([murid_id_str, ekskul_id_str, status_kehadiran, tanggal_kegiatan, tahun_ajaran]) or \
                    not murid_id_str.isdigit() or not ekskul_id_str.isdigit():
@@ -1223,10 +1414,10 @@ class Portal:
                 catatan = request.form.get('catatan_absen', '')
                 jam_kegiatan = request.form.get('jam_kegiatan') or None # Akan jadi None jika string kosong
 
-                id_pendaftaran_ekskul = self.con.get_pendaftaran_ekskul_id(murid_id, ekskul_id, tahun_ajaran)
+                id_pendaftaran_ekskul = self._con.get_pendaftaran_ekskul_id(murid_id, ekskul_id, tahun_ajaran)
 
                 if id_pendaftaran_ekskul:
-                    if self.con.save_absensi_ekskul(id_pendaftaran_ekskul, tanggal_kegiatan, status_kehadiran, guru_id, catatan, jam_kegiatan):
+                    if self._con.save_absensi_ekskul(id_pendaftaran_ekskul, tanggal_kegiatan, status_kehadiran, guru_id, catatan, jam_kegiatan):
                         flash("Data absensi berhasil disimpan/diperbarui.", "success")
                     else:
                         flash("Gagal menyimpan data absensi. Terjadi kesalahan pada database.", "danger")
@@ -1245,7 +1436,7 @@ class Portal:
         @self.guru_login_required
         def setujui_pendaftaran_guru(pendaftaran_id):
             guru_id_session = session.get('user_id')
-            pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
+            pendaftaran_info = self._con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
 
             if not pendaftaran_info:
                 flash("Data pendaftaran tidak ditemukan.", "danger")
@@ -1259,14 +1450,14 @@ class Portal:
 
             # Cek kuota jika ada (ekskul_info didapat dari _cek_guru_pembina_ekskul)
             if ekskul_info and ekskul_info.get('kuota_maksimal') is not None:
-                jumlah_peserta_aktif = self.con.count_active_members_ekskul(pendaftaran_info['id_ekskul'], pendaftaran_info['tahun_ajaran'])
+                jumlah_peserta_aktif = self._con.count_active_members_ekskul(pendaftaran_info['id_ekskul'], pendaftaran_info['tahun_ajaran'])
                 if jumlah_peserta_aktif >= ekskul_info['kuota_maksimal']:
                     flash(f"Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh. Pendaftaran tidak dapat disetujui.", "warning")
-                    self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', f"Ditolak otomatis karena kuota penuh saat approval oleh Guru: {session.get('nama_lengkap')}")
+                    self._con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', f"Ditolak otomatis karena kuota penuh saat approval oleh Guru: {session.get('nama_lengkap')}")
                     return redirect(request.referrer or url_for('dashboard_guru'))
             
             catatan = f"Disetujui oleh Guru Pembina: {session.get('nama_lengkap')}"
-            if self.con.update_ekskul_registration_status(pendaftaran_id, 'Disetujui', catatan):
+            if self._con.update_ekskul_registration_status(pendaftaran_id, 'Disetujui', catatan):
                 flash('Pendaftaran berhasil disetujui.', 'success')
             else:
                 flash('Gagal menyetujui pendaftaran.', 'danger')
@@ -1275,7 +1466,7 @@ class Portal:
         @self.app.route('/guru/ekskul/pendaftaran/<int:pendaftaran_id>/tolak', methods=['POST'])
         @self.guru_login_required
         def tolak_pendaftaran_guru(pendaftaran_id):
-            pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
+            pendaftaran_info = self._con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
             if not pendaftaran_info:
                 flash("Data pendaftaran tidak ditemukan.", "danger")
                 return redirect(request.referrer or url_for('dashboard_guru'))
@@ -1286,7 +1477,7 @@ class Portal:
 
             alasan = request.form.get('alasan_penolakan_guru', 'Ditolak oleh Guru Pembina.')
             catatan = f"{alasan} (Guru: {session.get('nama_lengkap')})"
-            if self.con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', catatan):
+            if self._con.update_ekskul_registration_status(pendaftaran_id, 'Ditolak', catatan):
                 flash('Pendaftaran berhasil ditolak.', 'success')
             else:
                 flash('Gagal menolak pendaftaran.', 'danger')
@@ -1300,10 +1491,10 @@ class Portal:
             if not is_pembina:
                 return redirect(url_for('dashboard_guru')) # atau ke detail ekskul jika ekskul_info ada
 
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() 
-            current_members = self.con.get_members_of_ekskul(ekskul_id, tahun_ajaran_aktif)
+            tahun_ajaran_aktif = self._con.get_tahun_ajaran_aktif() 
+            current_members = self._con.get_members_of_ekskul(ekskul_id, tahun_ajaran_aktif)
             # Murid yang bisa ditambahkan: yang aktif dan belum terdaftar di ekskul ini T.A. ini
-            available_students_to_add = self.con.get_all_active_murid_exclude_ekskul(ekskul_id, tahun_ajaran_aktif)
+            available_students_to_add = self._con.get_all_active_murid_exclude_ekskul(ekskul_id, tahun_ajaran_aktif)
             
             return render_template('guru/kelola_peserta_ekskul.html',
                                    ekskul_info=ekskul_info,
@@ -1331,19 +1522,19 @@ class Portal:
                 
                 # Panggil metode register_student_for_ekskul dari Config
                 # yang sudah menangani pengecekan kuota dan duplikasi
-                hasil_pendaftaran = self.con.register_student_for_ekskul(
+                hasil_pendaftaran = self._con.register_student_for_ekskul(
                     murid_id, ekskul_id, tahun_ajaran, 
                     status_pendaftaran='Disetujui', # Guru langsung menyetujui
                     catatan_pendaftar=catatan_pendaftar
                 )
 
                 if isinstance(hasil_pendaftaran, int): # Berhasil, ID pendaftaran dikembalikan
-                    murid_info = self.con.get_user_by_id(murid_id)
+                    murid_info = self._con.get_user_by_id(murid_id)
                     flash(f"Murid '{murid_info['nama_lengkap'] if murid_info else 'ID '+str(murid_id)}' berhasil ditambahkan ke ekskul '{ekskul_info['nama_ekskul']}'.", "success")
                 elif hasil_pendaftaran == "KUOTA_PENUH":
                     flash(f"Gagal menambahkan. Kuota untuk ekskul '{ekskul_info['nama_ekskul']}' sudah penuh.", "warning")
                 elif hasil_pendaftaran == "SUDAH_TERDAFTAR":
-                     murid_info = self.con.get_user_by_id(murid_id)
+                     murid_info = self._con.get_user_by_id(murid_id)
                      flash(f"Gagal menambahkan. Murid '{murid_info['nama_lengkap'] if murid_info else 'ID '+str(murid_id)}' sudah memiliki record pendaftaran di ekskul '{ekskul_info['nama_ekskul']}' untuk tahun ajaran ini.", "warning")
                 elif hasil_pendaftaran == "EKSKUL_NOT_FOUND": # Seharusnya tidak terjadi jika _cek_guru_pembina_ekskul lolos
                     flash(f"Ekskul '{ekskul_info['nama_ekskul']}' tidak ditemukan.", "danger")
@@ -1357,7 +1548,7 @@ class Portal:
         def remove_peserta_ekskul_guru(pendaftaran_id):
             ekskul_id_redirect = request.form.get('ekskul_id_redirect') # Untuk redirect kembali
 
-            pendaftaran_info = self.con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
+            pendaftaran_info = self._con.get_pendaftaran_ekskul_by_id(pendaftaran_id)
             if not pendaftaran_info:
                 flash("Data pendaftaran tidak ditemukan.", "danger")
                 return redirect(url_for('dashboard_guru'))
@@ -1370,7 +1561,7 @@ class Portal:
                 return redirect(url_for('dashboard_guru'))
 
             catatan_admin = f"Dikeluarkan oleh Guru Pembina: {session.get('nama_lengkap')}"
-            if self.con.update_ekskul_registration_status(pendaftaran_id, new_status='Berhenti', catatan_admin=catatan_admin):
+            if self._con.update_ekskul_registration_status(pendaftaran_id, new_status='Berhenti', catatan_admin=catatan_admin):
                 flash(f"Status pendaftaran (ID: {pendaftaran_id}) diubah menjadi 'Berhenti'.", "success")
             else:
                 flash("Gagal mengubah status pendaftaran.", "danger")
@@ -1446,7 +1637,7 @@ class Portal:
                             'isi_konten_teks': isi_konten_teks_final,
                             'id_pengunggah': session['user_id'] 
                         }
-                        materi_id = self.con.add_materi_ekskul(data_materi)
+                        materi_id = self._con.add_materi_ekskul(data_materi)
                         if materi_id:
                             flash("Materi ekstrakurikuler berhasil ditambahkan!", "success")
                             return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
@@ -1466,7 +1657,7 @@ class Portal:
             if not is_pembina:
                  return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id) if ekskul_info else url_for('dashboard_guru'))
 
-            materi_data_lama = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
+            materi_data_lama = self._con.get_materi_ekskul_by_id(id_materi_ekskul)
             if not materi_data_lama or materi_data_lama['id_ekskul'] != ekskul_id:
                 flash("Materi tidak ditemukan atau tidak sesuai dengan ekskul ini.", "danger")
                 return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
@@ -1530,7 +1721,7 @@ class Portal:
                     flash("Judul Materi wajib diisi.", "danger"); is_content_valid_overall = False
 
                 if is_content_valid_overall:
-                    if self.con.update_materi_ekskul(id_materi_ekskul, data_to_update):
+                    if self._con.update_materi_ekskul(id_materi_ekskul, data_to_update):
                         if delete_old_file and old_file_name_from_db:
                             try:
                                 file_to_remove = os.path.join(self.app.config['UPLOAD_FOLDER'], old_file_name_from_db)
@@ -1565,12 +1756,12 @@ class Portal:
             if not is_pembina:
                 return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id) if ekskul_info_check else url_for('dashboard_guru'))
 
-            materi_info = self.con.get_materi_ekskul_by_id(id_materi_ekskul)
+            materi_info = self._con.get_materi_ekskul_by_id(id_materi_ekskul)
             if not materi_info or materi_info['id_ekskul'] != ekskul_id:
                 flash("Materi tidak ditemukan atau tidak sesuai dengan ekskul ini.", "danger")
                 return redirect(url_for('detail_ekskul_guru', ekskul_id=ekskul_id))
 
-            materi_info_deleted = self.con.delete_materi_ekskul(id_materi_ekskul)
+            materi_info_deleted = self._con.delete_materi_ekskul(id_materi_ekskul)
             if materi_info_deleted:
                 if materi_info_deleted['tipe_konten'] == 'file' and materi_info_deleted['path_konten_atau_link']:
                     try:
@@ -1621,17 +1812,17 @@ class Portal:
                 return render_template('murid/register_murid.html', **request.form)
             
             # Cek apakah username sudah ada
-            if self.con.get_user_by_username(username):
+            if self._con.get_user_by_username(username):
                 flash(f"Username '{username}' sudah digunakan. Silakan pilih username lain.", 'danger')
                 return render_template('murid/register_murid.html', **request.form)
 
             # Opsional: Cek apakah email sudah ada
-            # if self.con.get_user_by_email(email): # Anda mungkin perlu buat metode ini di Config.py
+            # if self._con.get_user_by_email(email): # Anda mungkin perlu buat metode ini di Config.py
             #     flash(f"Email '{email}' sudah terdaftar.", 'danger')
             #     return render_template('register_murid.html', **request.form)
 
             # Opsional: Cek apakah Nomor Induk sudah ada (untuk peran murid)
-            # if self.con.get_user_by_nomor_induk_and_role(nomor_induk, 'murid'): # Buat metode ini di Config.py
+            # if self._con.get_user_by_nomor_induk_and_role(nomor_induk, 'murid'): # Buat metode ini di Config.py
             #     flash(f"Nomor Induk '{nomor_induk}' sudah terdaftar.", 'danger')
             #     return render_template('register_murid.html', **request.form)
 
@@ -1646,7 +1837,7 @@ class Portal:
                 'status_aktif': True # Bisa diatur False jika butuh approval admin/verifikasi email
             }
 
-            user_id = self.con.add_user(user_data) # Panggil metode add_user dari Config Anda
+            user_id = self._con.add_user(user_data) # Panggil metode add_user dari Config Anda
 
             if user_id:
                 flash(f"Registrasi berhasil! Selamat datang, {nama_lengkap}. Silakan login.", 'success')
@@ -1663,7 +1854,7 @@ class Portal:
 
             # Dapatkan tahun ajaran aktif
             # Pastikan metode get_tahun_ajaran_aktif() ada di Config.py Anda
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif() 
+            tahun_ajaran_aktif = self._con.get_tahun_ajaran_aktif() 
             if not tahun_ajaran_aktif:
                 flash("Tidak dapat menentukan tahun ajaran aktif. Hubungi admin.", "warning")
                 # Anda bisa memberikan nilai default atau menghentikan proses di sini
@@ -1673,20 +1864,20 @@ class Portal:
 
             # 1. Ambil Pengumuman untuk murid
             # Pastikan metode get_pengumuman_for_role ada di Config.py Anda
-            pengumuman_list = self.con.get_pengumuman_for_role('murid', limit=5)
+            pengumuman_list = self._con.get_pengumuman_for_role('murid', limit=5)
 
             # 2. Ambil Ekskul yang diikuti murid (beserta detailnya)
             ekskul_diikuti_list = [] # Default ke list kosong
             if murid_id and tahun_ajaran_aktif:
                 # Pastikan metode get_ekskul_diikuti_murid_detail ada di Config.py Anda
-                ekskul_diikuti_list = self.con.get_ekskul_diikuti_murid_detail(murid_id, tahun_ajaran_aktif)
+                ekskul_diikuti_list = self._con.get_ekskul_diikuti_murid_detail(murid_id, tahun_ajaran_aktif)
 
             # 3. Ambil Materi untuk setiap ekskul yang diikuti
             materi_per_ekskul = {} 
             if ekskul_diikuti_list:
                 for ekskul in ekskul_diikuti_list:
                     # Pastikan metode get_materi_by_ekskul_id ada di Config.py Anda
-                    materi_list_untuk_ekskul_ini = self.con.get_materi_by_ekskul_id(ekskul['id_ekskul'])
+                    materi_list_untuk_ekskul_ini = self._con.get_materi_by_ekskul_id(ekskul['id_ekskul'])
                     if materi_list_untuk_ekskul_ini:
                         materi_per_ekskul[ekskul['nama_ekskul']] = materi_list_untuk_ekskul_ini
                     else:
@@ -1702,13 +1893,13 @@ class Portal:
         @self.murid_login_required
         def lihat_ekskul_murid():
             murid_id = session.get('user_id')
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
+            tahun_ajaran_aktif = self._con.get_tahun_ajaran_aktif()
 
-            list_ekskul_tersedia = self.con.get_all_ekskul() # Ambil semua ekskul
+            list_ekskul_tersedia = self._con.get_all_ekskul() # Ambil semua ekskul
 
             ekskul_sudah_diikuti = []
-            if hasattr(self.con, 'get_ekskul_diikuti_murid_detail'):
-                ekskul_sudah_diikuti = self.con.get_ekskul_diikuti_murid_detail(murid_id, tahun_ajaran_aktif)
+            if hasattr(self._con, 'get_ekskul_diikuti_murid_detail'):
+                ekskul_sudah_diikuti = self._con.get_ekskul_diikuti_murid_detail(murid_id, tahun_ajaran_aktif)
 
             ids_ekskul_sudah_diikuti = [e['id_ekskul'] for e in ekskul_sudah_diikuti] if ekskul_sudah_diikuti else []
 
@@ -1733,13 +1924,13 @@ class Portal:
             catatan_pendaftar = f"Didaftarkan oleh murid: {nama_murid}"
             status_awal_pendaftaran = 'Menunggu Persetujuan' # Atau 'Terdaftar'
 
-            hasil_pendaftaran = self.con.register_student_for_ekskul(
+            hasil_pendaftaran = self._con.register_student_for_ekskul(
                 murid_id, ekskul_id, tahun_ajaran,
                 status_pendaftaran=status_awal_pendaftaran,
                 catatan_pendaftar=catatan_pendaftar
             )
 
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+            ekskul_info = self._con.get_ekskul_by_id(ekskul_id)
             nama_ekskul = ekskul_info['nama_ekskul'] if ekskul_info else f"ID {ekskul_id}"
 
             if isinstance(hasil_pendaftaran, int):
@@ -1759,14 +1950,14 @@ class Portal:
         @self.murid_login_required
         def ekskul_saya_murid():
             murid_id = session.get('user_id')
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
+            tahun_ajaran_aktif = self._con.get_tahun_ajaran_aktif()
             
             data_ekskul_diikuti = []
-            if hasattr(self.con, 'get_pendaftaran_by_murid'):
-                all_my_registrations = self.con.get_pendaftaran_by_murid(murid_id, tahun_ajaran_aktif)
+            if hasattr(self._con, 'get_pendaftaran_by_murid'):
+                all_my_registrations = self._con.get_pendaftaran_by_murid(murid_id, tahun_ajaran_aktif)
                 if all_my_registrations:
                     for reg in all_my_registrations:
-                        detail_ekskul = self.con.get_ekskul_by_id(reg['id_ekskul']) 
+                        detail_ekskul = self._con.get_ekskul_by_id(reg['id_ekskul']) 
                         if detail_ekskul:
                             data_ekskul_diikuti.append({
                                 'id_ekskul': detail_ekskul['id_ekskul'], # <--- TAMBAHKAN INI
@@ -1785,7 +1976,7 @@ class Portal:
         def detail_ekskul_murid(ekskul_id):
             murid_id = session.get('user_id') # Untuk validasi atau personalisasi di masa depan
             
-            ekskul_info = self.con.get_ekskul_by_id(ekskul_id)
+            ekskul_info = self._con.get_ekskul_by_id(ekskul_id)
             if not ekskul_info:
                 flash('Ekstrakurikuler tidak ditemukan.', 'danger')
                 return redirect(url_for('ekskul_saya_murid')) # atau ke dashboard murid
@@ -1796,7 +1987,7 @@ class Portal:
             #     # Logika jika ekskul tidak aktif tapi murid masih terdaftar
             #     pass
 
-            materi_list = self.con.get_materi_by_ekskul_id(ekskul_id)
+            materi_list = self._con.get_materi_by_ekskul_id(ekskul_id)
 
             return render_template('murid/detail_ekskul_murid.html',
                                     ekskul=ekskul_info,
@@ -1808,13 +1999,13 @@ class Portal:
         def lihat_absensi_ekskul_saya():
             murid_id = session.get('user_id')
             nama_murid = session.get('nama_lengkap')
-            tahun_ajaran_aktif = self.con.get_tahun_ajaran_aktif()
+            tahun_ajaran_aktif = self._con.get_tahun_ajaran_aktif()
 
             if not tahun_ajaran_aktif:
                 flash("Tidak dapat menentukan tahun ajaran aktif. Hubungi admin.", "warning")
                 return redirect(url_for('dashboard_murid')) # Atau halaman lain
 
-            raw_attendance_records = self.con.get_my_attendance_records(murid_id, tahun_ajaran_aktif)
+            raw_attendance_records = self._con.get_my_attendance_records(murid_id, tahun_ajaran_aktif)
                 
             attendance_by_ekskul = defaultdict(list)
             if raw_attendance_records:
@@ -1856,7 +2047,7 @@ class Portal:
         def edit_profil_murid(): # Fungsi ini didefinisikan di dalam routes()
                 murid_id = session.get('user_id')
                 # Ambil data pengguna dari database untuk ditampilkan atau divalidasi
-                user_sekarang = self.con.get_user_by_id(murid_id)
+                user_sekarang = self._con.get_user_by_id(murid_id)
 
                 if not user_sekarang:
                     flash("Gagal memuat data profil Anda. Silakan login kembali.", "danger")
@@ -1922,7 +2113,7 @@ class Portal:
                     
                     # Panggil metode update_user dari Config.py
                     # Metode ini mengupdate field yang ada di data_to_update
-                    if self.con.update_user(murid_id, data_to_update):
+                    if self._con.update_user(murid_id, data_to_update):
                         # Update session jika nama_lengkap atau email (jika disimpan di session) berubah
                         session['nama_lengkap'] = nama_lengkap_baru
                         # session['email'] = email_baru # Jika email juga disimpan di session

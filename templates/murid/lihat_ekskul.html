@@ -1,56 +1,139 @@
-{% extends "murid/layout_murid.html" %} {% block title %}Daftar Ekstrakurikuler{% endblock %}
+{% extends "murid/layout_murid.html" %}
+
+{% block title %}Daftar Ekstrakurikuler - {{ tahun_ajaran_aktif }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Styling spesifik untuk halaman daftar ekskul jika diperlukan */
+    .content-container h2 { /* H2 utama halaman ini */
+        color: var(--blue, #007bff);
+        border-bottom: 2px solid var(--blue, #007bff);
+        padding-bottom: 0.5em;
+        margin-bottom: 1.5em;
+    }
+
+    /* Menggunakan style .card dan .card-grid dari layout_murid.html */
+    /* Penyesuaian untuk tombol di dalam kartu agar bisa full-width dan ada variasi */
+    .card .cta { /* Tombol CTA di dalam kartu */
+        width: 100%;
+        display: block; /* Agar mengambil lebar penuh dan bisa diatur margin atas/bawah */
+        margin-top: auto; /* Mendorong tombol ke bawah jika card flex-direction column */
+        padding: 0.75rem 1rem; /* Padding yang pas untuk tombol kartu */
+    }
+
+    .cta.cta-daftar { /* Tombol daftar standar (kuning) */
+        background-color: var(--yellow, #ffd700);
+        color: var(--dark, #333);
+    }
+    .cta.cta-daftar:hover {
+        background-color: #e6c300; /* Kuning lebih gelap */
+    }
+
+    .cta.cta-disabled-custom,
+    button.cta-disabled-custom[disabled] { /* Tombol yang dinonaktifkan */
+        background-color: #e9ecef; /* Warna abu-abu terang */
+        color: #6c757d; /* Warna teks abu-abu */
+        cursor: not-allowed;
+        border: 1px solid #ced4da;
+        box-shadow: none;
+    }
+    .cta.cta-disabled-custom:hover,
+    button.cta-disabled-custom[disabled]:hover {
+        background-color: #e9ecef;
+        color: #6c757d;
+        transform: none;
+    }
+
+    .card-text-details p {
+        font-size: 0.85rem; /* Ukuran font lebih kecil untuk detail di kartu */
+        margin-bottom: 0.4rem;
+        text-align: left; /* Detail rata kiri */
+        color: #454545;
+    }
+    .card-text-details strong {
+        color: var(--dark, #333);
+    }
+    .card-body { /* Pastikan card-body adalah flex column untuk mt-auto bekerja */
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+    .card-title { /* Alias untuk h3 di dalam card dari layout */
+        color: var(--blue, #007bff); /* Menyamakan dengan h3 di layout */
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+    .logo-ekskul-container { /* Untuk logo agar konsisten */
+        width: 80px; /* Sama seperti di .card img layout */
+        height: 80px;
+        margin: 0 auto 1rem auto;
+        overflow: hidden; /* Jika gambar lebih besar */
+    }
+    .logo-ekskul-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Daftar Ekstrakurikuler - Tahun Ajaran {{ tahun_ajaran_aktif }}</h2>
-    <p>Halo, {{ nama_murid }}! Pilih ekstrakurikuler yang kamu minati.</p>
+<div class="container content-container">
+    <h2>Daftar Ekstrakurikuler <small class="text-muted" style="font-size:0.7em;">(Tahun Ajaran {{ tahun_ajaran_aktif }})</small></h2>
+    <p>Halo, <strong>{{ nama_murid }}</strong>! Pilih ekstrakurikuler yang kamu minati di bawah ini.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
     {% if list_ekskul %}
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="card-grid"> {# Menggunakan .card-grid dari layout_murid.html #}
             {% for ekskul in list_ekskul %}
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
+                <div class="card"> {# Menggunakan .card dari layout_murid.html #}
+                    <div class="logo-ekskul-container">
                         {% if ekskul.url_logo_ekskul %}
-                            {% endif %}
-                        <div class="card-body d-flex flex-column">
-                            <h5 class="card-title text-primary">{{ ekskul.nama_ekskul }}</h5>
-                            <p class="card-text mb-1"><small class="text-muted">Kategori: {{ ekskul.kategori | default('Umum', true) }}</small></p>
-                            <p class="card-text mb-1"><strong>Pembina:</strong> {{ ekskul.nama_guru_pembina | default('N/A', true) }}</p>
-                            <p class="card-text mb-1"><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ditentukan', true) }}</p>
-                            <p class="card-text mb-1"><strong>Lokasi:</strong> {{ ekskul.lokasi | default('N/A', true) }}</p>
-                            <p class="card-text">
+                            <img src="{{ url_for('static', filename='uploads/logos/' ~ ekskul.url_logo_ekskul) }}" alt="Logo {{ ekskul.nama_ekskul }}">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='images/default_logo.png') }}" alt="Logo Ekskul Default"> 
+                            {# Ganti images/default_logo.png dengan path default Anda #}
+                        {% endif %}
+                    </div>
+                    <div class="card-body"> {# Bootstrap card-body untuk flex-column #}
+                        <h3 class="card-title">{{ ekskul.nama_ekskul }}</h3>
+                        <div class="card-text-details">
+                            <p><small class="text-muted">Kategori: {{ ekskul.kategori | default('Umum', true) }}</small></p>
+                            <p><strong>Pembina:</strong> {{ ekskul.nama_guru_pembina | default('N/A', true) }}</p>
+                            <p><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ditentukan', true) }}</p>
+                            <p><strong>Lokasi:</strong> {{ ekskul.lokasi | default('N/A', true) }}</p>
+                            <p>
                                 <strong>Kuota:</strong> 
                                 {% if ekskul.kuota_maksimal is not none %}
                                     {{ ekskul.kuota_maksimal }} peserta
-                                    {% else %}
+                                {% else %}
                                     Tidak terbatas
                                 {% endif %}
                             </p>
-                            <p class="card-text small">{{ ekskul.deskripsi | truncate(120, true) }}</p>
-                            
-                            <div class="mt-auto">
-                                {% if ekskul.id_ekskul in ids_ekskul_sudah_diikuti %}
-                                    <button type="button" class="btn btn-secondary w-100" disabled><i class="fas fa-check-circle"></i> Sudah Terdaftar</button>
-                                {% elif not ekskul.status_aktif %}
-                                     <button type="button" class="btn btn-outline-secondary w-100" disabled>Tidak Aktif</button>
-                                {% else %}
-                                    <form action="{{ url_for('daftar_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mendaftar ekskul {{ ekskul.nama_ekskul }}?');">
-                                        <input type="hidden" name="tahun_ajaran" value="{{ tahun_ajaran_aktif }}">
-                                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-user-plus"></i> Daftar Sekarang</button>
-                                    </form>
-                                {% endif %}
-                            </div>
+                            <p class="mt-2" style="font-size: 0.8rem; color: #666;"><em>{{ ekskul.deskripsi | truncate(100, true) }}</em></p>
+                        </div>
+                        
+                        <div class="mt-auto pt-3"> {# mt-auto mendorong ke bawah, pt-3 memberi jarak atas #}
+                            {% if ekskul.id_ekskul in ids_ekskul_sudah_diikuti %}
+                                <button type="button" class="cta cta-disabled-custom" disabled><i class="fas fa-check-circle"></i> Sudah Terdaftar</button>
+                            {% elif not ekskul.status_aktif %}
+                                 <button type="button" class="cta cta-disabled-custom" disabled><i class="fas fa-times-circle"></i> Tidak Aktif</button>
+                            {% else %}
+                                <form action="{{ url_for('daftar_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mendaftar ekskul {{ ekskul.nama_ekskul }}?');" style="margin:0;">
+                                    <input type="hidden" name="tahun_ajaran" value="{{ tahun_ajaran_aktif }}">
+                                    <button type="submit" class="cta cta-daftar"><i class="fas fa-user-plus"></i> Daftar Sekarang</button>
+                                </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

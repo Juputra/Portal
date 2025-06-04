@@ -280,36 +280,59 @@ class Config:
                 sql_parts = []
                 params = []
 
-                # ... (penanganan field lain seperti nama_ekskul, deskripsi, dll.) ...
-                if 'nama_ekskul' in ekskul_data: sql_parts.append("nama_ekskul = %s"); params.append(ekskul_data['nama_ekskul'])
-                if 'deskripsi' in ekskul_data: sql_parts.append("deskripsi = %s"); params.append(ekskul_data.get('deskripsi'))
-                if 'kategori' in ekskul_data: # Tambahkan ini
+                # Tambahkan pengecekan untuk setiap field yang mungkin diupdate
+                if 'nama_ekskul' in ekskul_data:
+                    sql_parts.append("nama_ekskul = %s")
+                    params.append(ekskul_data['nama_ekskul'])
+                if 'deskripsi' in ekskul_data: # Boleh None atau string kosong
+                    sql_parts.append("deskripsi = %s")
+                    params.append(ekskul_data.get('deskripsi'))
+                if 'kategori' in ekskul_data:
                     sql_parts.append("kategori = %s")
                     params.append(ekskul_data.get('kategori'))
-                if 'id_guru_pembina' in ekskul_data: sql_parts.append("id_guru_pembina = %s"); params.append(ekskul_data.get('id_guru_pembina'))
-                if 'kuota_maksimal' in ekskul_data:
+                if 'id_guru_pembina' in ekskul_data: # Boleh None
+                    sql_parts.append("id_guru_pembina = %s")
+                    params.append(ekskul_data.get('id_guru_pembina'))
+                if 'jadwal_deskripsi' in ekskul_data: # Tambahkan ini
+                    sql_parts.append("jadwal_deskripsi = %s")
+                    params.append(ekskul_data.get('jadwal_deskripsi'))
+                if 'lokasi' in ekskul_data: # Tambahkan ini
+                    sql_parts.append("lokasi = %s")
+                    params.append(ekskul_data.get('lokasi'))
+                if 'kuota_maksimal' in ekskul_data: # Boleh None
                     sql_parts.append("kuota_maksimal = %s")
-                    # ekskul_data['kuota_maksimal'] sudah None jika kosong dari app.py
-                    params.append(ekskul_data['kuota_maksimal']) 
-                # ... (lanjutkan untuk field lain: jadwal_deskripsi, lokasi, dll.) ...
+                    params.append(ekskul_data.get('kuota_maksimal'))
+                if 'status_aktif' in ekskul_data: # Ini boolean
+                    sql_parts.append("status_aktif = %s")
+                    params.append(bool(ekskul_data['status_aktif']))
+                
+                # --- INI BAGIAN PENTING UNTUK LOGO ---
+                if 'url_logo_ekskul' in ekskul_data:
+                    sql_parts.append("url_logo_ekskul = %s")
+                    # Nilai bisa berupa nama file (string) atau None (jika logo dihapus)
+                    params.append(ekskul_data.get('url_logo_ekskul')) 
+                # --- AKHIR BAGIAN PENTING UNTUK LOGO ---
 
                 if not sql_parts:
+                    # Tidak ada field yang dikirim untuk diupdate, anggap sukses (tidak ada perubahan)
                     return True 
 
                 sql = f"UPDATE Ekstrakurikuler SET {', '.join(sql_parts)}, updated_at = NOW() WHERE id_ekskul = %s"
                 params.append(ekskul_id)
+                
+                # Debugging tambahan di config.py jika perlu:
+                # print(f"DEBUG SQL Update Ekskul: {sql}")
+                # print(f"DEBUG Params Update Ekskul: {tuple(params)}")
 
                 cursor.execute(sql, tuple(params))
                 conn.commit()
-                return True # Berhasil
-        # ekskul_data adalah dictionary yang berisi field yang akan diupdate
-        # Contoh: {'nama_ekskul': 'Basket Baru', 'lokasi': 'Lapangan Utama', ...}
+                return cursor.rowcount > 0 # Return True jika ada baris yang terupdate
         except pymysql.MySQLError as e:
             print(f"Error updating ekstrakurikuler {ekskul_id}: {e}")
             conn.rollback()
             return False
         finally:
-            conn.close()
+            if conn.open: conn.close() # Pastikan koneksi ditutup
 
     def delete_ekskul(self, ekskul_id):
         conn = self._get_connection()
@@ -1110,6 +1133,7 @@ class Config:
                 sql = """
                     SELECT e.id_ekskul, e.nama_ekskul, e.jadwal_deskripsi, e.lokasi,
                            p_pembina.nama_lengkap AS nama_pembina,
+                           e.url_logo_ekskul,
                            pe.status_pendaftaran
                     FROM PendaftaranEkskul pe
                     JOIN Ekstrakurikuler e ON pe.id_ekskul = e.id_ekskul

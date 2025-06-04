@@ -1,19 +1,31 @@
-{% extends "murid/layout_murid.html" %} {% block title %}Dashboard Saya - {{ nama_murid }}{% endblock %}
+{% extends "murid/layout_murid.html" %}
+
+{% block title %}Dashboard Saya - {{ nama_murid }}{% endblock %}
 
 {% block content %}
-<div class="container"> <h2 style="color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 0.5em; margin-top: 1.5em;">
-        Dashboard Murid
-    </h2>
-    <p>Selamat datang kembali, <strong>{{ nama_murid }}!</strong></p>
-    <p>Tahun Ajaran Aktif: <strong>{{ tahun_ajaran_aktif }}</strong></p>
+<div class="container">
+    {# Tampilkan flash messages jika ada #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
-    <div class="kategori-ekskul" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; border-radius: 5px;">
-        <h3 style="color: #333; margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 0.5em;">
-            <i class="fas fa-bullhorn"></i> Pengumuman Terbaru
-        </h3>
+    <section id="welcome-message" style="margin-bottom: 1.5rem; padding: 1rem; background-color: #e6f0ff; border-radius: 8px;">
+        <h3>Selamat datang kembali, <strong>{{ nama_murid }}!</strong></h3>
+        <p>Tahun Ajaran Aktif: <strong>{{ tahun_ajaran_aktif }}</strong></p>
+    </section>
+
+    <section id="pengumuman-terbaru">
+        <h2><i class="fas fa-bullhorn"></i> Pengumuman Terbaru</h2>
         {% if pengumuman_list %}
             {% for pengumuman in pengumuman_list %}
-                <div style="padding: 10px; margin-bottom: 10px; border-left: 4px solid #007bff; background-color: #e7f3ff;">
+                <div class="materi-item" style="border-left-color: var(--yellow); background-color: #fffbec;"> 
                     <h5>{{ pengumuman.judul_pengumuman }}</h5>
                     <p style="margin-bottom: 5px;">{{ pengumuman.isi_pengumuman | safe }}</p>
                     <small style="color: #555;">
@@ -25,60 +37,61 @@
         {% else %}
             <p>Tidak ada pengumuman baru saat ini.</p>
         {% endif %}
-    </div>
+    </section>
 
-    <div class="kategori-ekskul" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9; border-radius: 5px;">
-        <h3 style="color: #333; margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 0.5em;">
-            <i class="fas fa-running"></i> Ekstrakurikuler Saya
-        </h3>
+    <section id="ekskul-saya">
+        <h2><i class="fas fa-running"></i> Ekstrakurikuler Saya</h2>
         {% if ekskul_diikuti_list %}
-            <ul class="daftar-ekskul" style="list-style: none; padding-left: 0; margin-top: 10px;">
+            <div class="card-grid">
                 {% for ekskul in ekskul_diikuti_list %}
-                    <li class="ekskul-item" style="display: flex; align-items: flex-start; margin-bottom: 15px; padding-bottom:10px; border-bottom: 1px dotted #eee;">
-                        <div style="flex-grow: 1;">
-                            <h5 style="margin-top:0; margin-bottom:5px;">
-                                <a href="{{ url_for('detail_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}" style="text-decoration: none; color: #007bff;">
-                                    {{ ekskul.nama_ekskul }}
-                                </a>
-                                <span style="font-size: 0.8em; padding: 0.2em 0.5em; color: white; border-radius: 3px; margin-left: 5px;
-                                    background-color: {% if ekskul.status_pendaftaran == 'Disetujui' or ekskul.status_pendaftaran == 'Terdaftar' %} #28a745 
-                                                     {% elif ekskul.status_pendaftaran == 'Menunggu Persetujuan' %} #ffc107
-                                                     {% else %} #6c757d {% endif %};">
-                                    {{ ekskul.status_pendaftaran }}
-                                </span>
-                            </h5>
-                            <p style="margin: 2px 0; font-size: 0.9em;"><strong>Pembina:</strong> {{ ekskul.nama_pembina | default('N/A') }}</p>
-                            <p style="margin: 2px 0; font-size: 0.9em;"><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ditentukan') }}</p>
-                            <p style="margin: 2px 0; font-size: 0.9em;"><strong>Lokasi:</strong> {{ ekskul.lokasi | default('N/A') }}</p>
-
-                            {% if ekskul.nama_ekskul in materi_per_ekskul and materi_per_ekskul[ekskul.nama_ekskul] %}
-                                <div style="margin-top: 8px;">
-                                    <p style="margin-bottom: 3px; font-size: 0.85em;"><strong>Materi Terbaru:</strong></p>
-                                    <ul style="list-style: none; padding-left: 0; font-size: 0.8em;">
-                                        {% for materi in materi_per_ekskul[ekskul.nama_ekskul][:2] %}
-                                            <li style="margin-bottom: 2px;"> &#8227; {{ materi.judul_materi }} ({{ materi.tipe_konten }})</li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                            {% endif %}
-                        </div>
-                        <a href="{{ url_for('detail_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}" class="btn-detail-ekskul" 
-                           style="background-color: #007bff; color: white; text-decoration:none; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9em; white-space: nowrap; align-self: center;">
-                           Lihat Detail
-                        </a>
-                    </li>
+                <div class="card">
+                    <div class="card-image-container"> {# Wrapper untuk gambar jika diperlukan styling lebih lanjut #}
+                        {% if ekskul.url_logo_ekskul %}
+                            <img src="{{ url_for('static', filename='uploads/logos/' ~ ekskul.url_logo_ekskul) }}" alt="Logo {{ ekskul.nama_ekskul }}">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='images/default_logo.png') }}" alt="Logo Ekskul Default"> 
+                            {# Ganti 'images/default_logo.png' dengan path ke logo default Anda #}
+                        {% endif %}
+                    </div>
+                    
+                    <h3>{{ ekskul.nama_ekskul }}</h3>
+                    <div class="details">
+                        <p style="font-size: 0.85em; margin-bottom: 0.5rem;">
+                            <span style="font-weight: bold; padding: 0.2em 0.5em; color: white; border-radius: 3px;
+                                background-color: {% if ekskul.status_pendaftaran == 'Disetujui' or ekskul.status_pendaftaran == 'Terdaftar' %} #28a745 
+                                                {% elif ekskul.status_pendaftaran == 'Menunggu Persetujuan' %} #ffc107
+                                                {% else %} #6c757d {% endif %};">
+                                {{ ekskul.status_pendaftaran }}
+                            </span>
+                        </p>
+                        <p><strong>Pembina:</strong> {{ ekskul.nama_pembina | default('N/A') }}</p>
+                        <p><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Belum ada') }}</p>
+                        
+                        {% if ekskul.nama_ekskul in materi_per_ekskul and materi_per_ekskul[ekskul.nama_ekskul] %}
+                            <div style="margin-top: 10px; text-align: left; font-size: 0.8em;">
+                                <strong style="font-size:0.9em;">Materi Terbaru:</strong>
+                                <ul style="list-style: disc; padding-left: 20px; margin-top: 5px;">
+                                    {% for materi in materi_per_ekskul[ekskul.nama_ekskul][:2] %} 
+                                        <li>{{ materi.judul_materi }} ({{ materi.tipe_konten }})</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <a class="cta" href="{{ url_for('detail_ekskul_murid', ekskul_id=ekskul.id_ekskul) }}">Lihat Detail</a>
+                </div>
                 {% endfor %}
-            </ul>
-             <div style="margin-top: 15px;">
-                 <a href="{{ url_for('ekskul_saya_murid') }}" style="text-decoration: none; color: #007bff; padding: 8px 12px; border: 1px solid #007bff; border-radius: 5px; display: inline-block; margin-right:10px;">Lihat Semua Ekskul Saya</a>
-                 <a href="{{ url_for('lihat_ekskul_murid') }}" style="text-decoration: none; color: #28a745; padding: 8px 12px; border: 1px solid #28a745; border-radius: 5px; display: inline-block;">Daftar Ekskul Baru</a>
+            </div>
+            <div style="margin-top: 25px; text-align:center;">
+                 <a href="{{ url_for('ekskul_saya_murid') }}" class="cta cta-secondary">Lihat Semua Ekskul Saya</a>
+                 <a href="{{ url_for('lihat_ekskul_murid') }}" class="cta" style="background-color: #28a745; color:white;">Daftar Ekskul Baru</a>
             </div>
         {% else %}
             <p>Anda belum mengikuti ekstrakurikuler apapun pada tahun ajaran ini.</p>
-            <a href="{{ url_for('lihat_ekskul_murid') }}" style="background-color: #28a745; color: white; text-decoration:none; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 1em; display:inline-block;">
+            <a href="{{ url_for('lihat_ekskul_murid') }}" class="cta" style="background-color: #28a745; color: white;">
                 Daftar Ekstrakurikuler
             </a>
         {% endif %}
-    </div>
+    </section>
 </div>
 {% endblock %}

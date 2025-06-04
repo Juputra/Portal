@@ -1,67 +1,184 @@
-{% extends "murid/layout_murid.html" %} {% block title %}Edit Profil Saya{% endblock %}
+{% extends "murid/layout_murid.html" %}
+
+{% block title %}Edit Profil Saya - {{ nama_murid }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Styling H2 utama halaman ini (jika perlu kustomisasi dari layout) */
+    .content-container h2 {
+        color: var(--blue, #007bff);
+        border-bottom: 2px solid var(--blue, #007bff);
+        padding-bottom: 0.5em;
+        margin-bottom: 1.5em;
+    }
+
+    /* Kartu untuk form edit profil */
+    .edit-profil-card {
+        background-color: var(--white, #ffffff);
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+        margin-top: 1rem; /* Jarak dari paragraf pembuka */
+    }
+
+    .edit-profil-card .form-section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--dark, #333);
+        margin-top: 0; /* Untuk title pertama */
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.75rem;
+    }
+    .edit-profil-card .form-section-title.subsequent { /* Untuk title setelah hr */
+        margin-top: 1.5rem;
+    }
+
+
+    /* Styling untuk grup form (label + input) */
+    .form-group-custom {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group-custom label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--dark, #333);
+        font-size: 0.9rem;
+    }
+    .form-group-custom label .text-danger { /* Bintang merah */
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    .form-group-custom input[type="text"],
+    .form-group-custom input[type="email"],
+    .form-group-custom input[type="password"] {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .form-group-custom input[type="text"]:focus,
+    .form-group-custom input[type="email"]:focus,
+    .form-group-custom input[type="password"]:focus {
+        border-color: var(--blue, #007bff);
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        outline: none;
+    }
+    .form-group-custom input[readonly] {
+        background-color: var(--gray, #f4f4f4);
+        cursor: not-allowed;
+    }
+
+    .form-text-custom { /* Untuk teks bantuan di bawah input */
+        font-size: 0.8rem;
+        color: #6c757d;
+        display: block;
+        margin-top: 0.25rem;
+    }
+
+    .edit-profil-card hr {
+        margin: 2rem 0;
+        border-top: 1px solid #eee;
+    }
+
+    /* Tombol Simpan Perubahan */
+    .btn-simpan-profil {
+        display: block; /* Agar bisa full width */
+        width: 100%;
+        padding: 0.85rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--white, #ffffff);
+        background-color: var(--blue, #007bff);
+        border: none;
+        border-radius: 25px; /* Sesuai .cta */
+        cursor: pointer;
+        text-align: center;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+    }
+    .btn-simpan-profil:hover {
+        background-color: #0056b3; /* Biru lebih gelap */
+        transform: translateY(-1px);
+    }
+    .btn-simpan-profil .fas {
+        margin-right: 8px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container content-container">
     <h2>Edit Profil Saya</h2>
-    <p>Ubah informasi profil Anda di bawah ini, {{ nama_murid }}.</p>
+    <p>Ubah informasi profil Anda di bawah ini, <strong>{{ nama_murid }}</strong>.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
     <form method="POST" action="{{ url_for('edit_profil_murid') }}">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Informasi Pribadi</h5>
-                <div class="mb-3">
-                    <label for="nama_lengkap" class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" 
-                           value="{{ user_data.nama_lengkap if user_data else session.nama_lengkap }}" required>
-                </div>
-                <div class="mb-3">
-                    <label for="nomor_induk" class="form-label">Nomor Induk (NIS/NISN)</label>
-                    <input type="text" class="form-control" id="nomor_induk" name="nomor_induk" 
-                           value="{{ user_data.nomor_induk if user_data else '' }}" readonly>
-                    <small class="form-text text-muted">Nomor induk tidak dapat diubah.</small>
-                </div>
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control" id="email" name="email" 
-                           value="{{ user_data.email if user_data else session.email if 'email' in session else '' }}" required>
-                </div>
-                <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" name="username" 
-                           value="{{ user_data.username if user_data else session.username }}" readonly>
-                    <small class="form-text text-muted">Username tidak dapat diubah.</small>
-                </div>
-
-                <hr>
-                <h5 class="card-title mt-4">Ubah Password (Opsional)</h5>
-                <p><small class="text-muted">Kosongkan jika tidak ingin mengubah password.</small></p>
-                <div class="mb-3">
-                    <label for="current_password" class="form-label">Password Saat Ini</label>
-                    <input type="password" class="form-control" id="current_password" name="current_password">
-                     <small class="form-text text-muted">Diperlukan jika ingin mengubah password.</small>
-                </div>
-                <div class="mb-3">
-                    <label for="new_password" class="form-label">Password Baru</label>
-                    <input type="password" class="form-control" id="new_password" name="new_password">
-                </div>
-                <div class="mb-3">
-                    <label for="confirm_new_password" class="form-label">Konfirmasi Password Baru</label>
-                    <input type="password" class="form-control" id="confirm_new_password" name="confirm_new_password">
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save"></i> Simpan Perubahan</button>
+        <div class="edit-profil-card">
+            <h5 class="form-section-title">Informasi Pribadi</h5>
+            
+            <div class="form-group-custom">
+                <label for="nama_lengkap">Nama Lengkap <span class="text-danger">*</span></label>
+                <input type="text" id="nama_lengkap" name="nama_lengkap" 
+                       value="{{ user_data.nama_lengkap if user_data else session.nama_lengkap }}" required>
             </div>
+            
+            <div class="form-group-custom">
+                <label for="nomor_induk">Nomor Induk (NIS/NISN)</label>
+                <input type="text" id="nomor_induk" name="nomor_induk" 
+                       value="{{ user_data.nomor_induk if user_data else '' }}" readonly>
+                <small class="form-text-custom">Nomor induk tidak dapat diubah.</small>
+            </div>
+            
+            <div class="form-group-custom">
+                <label for="email">Email <span class="text-danger">*</span></label>
+                <input type="email" id="email" name="email" 
+                       value="{{ user_data.email if user_data else session.email if 'email' in session else '' }}" required>
+            </div>
+            
+            <div class="form-group-custom">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" 
+                       value="{{ user_data.username if user_data else session.username }}" readonly>
+                <small class="form-text-custom">Username tidak dapat diubah.</small>
+            </div>
+
+            <hr>
+            <h5 class="form-section-title subsequent">Ubah Password (Opsional)</h5>
+            <p><small class="form-text-custom" style="margin-bottom:1rem; display:block;">Kosongkan field password jika tidak ingin mengubah password.</small></p>
+            
+            <div class="form-group-custom">
+                <label for="current_password">Password Saat Ini</label>
+                <input type="password" id="current_password" name="current_password">
+                <small class="form-text-custom">Diperlukan jika ingin mengubah password.</small>
+            </div>
+            
+            <div class="form-group-custom">
+                <label for="new_password">Password Baru</label>
+                <input type="password" id="new_password" name="new_password">
+            </div>
+            
+            <div class="form-group-custom">
+                <label for="confirm_new_password">Konfirmasi Password Baru</label>
+                <input type="password" id="confirm_new_password" name="confirm_new_password">
+            </div>
+
+            <button type="submit" class="btn-simpan-profil"><i class="fas fa-save"></i> Simpan Perubahan</button>
         </div>
     </form>
 </div>

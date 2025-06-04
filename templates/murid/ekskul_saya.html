@@ -1,62 +1,186 @@
 {% extends "murid/layout_murid.html" %}
 
-{% block title %}Ekstrakurikuler Saya{% endblock %}
+{% block title %}Ekstrakurikuler Saya - {{ nama_murid }}{% endblock %}
+
+{% block head_extra %}
+{# CSS spesifik untuk halaman ini #}
+<style>
+    /* Styling H2 khusus untuk .content-container di halaman ini */
+    .content-container h2 {
+        color: var(--blue, #007bff);
+        border-bottom: 2px solid var(--blue, #007bff);
+        padding-bottom: 0.5em;
+        margin-bottom: 1.5em;
+    }
+
+    /* Styling tabel kustom untuk halaman "Ekskul Saya" */
+    .table-ekskul-saya-custom {
+        width: 100%;
+        margin: 20px 0;
+        border-collapse: collapse;
+        box-shadow: 0 8px 20px rgba(81, 81, 229, 0.08);
+        border-radius: 12px;
+        overflow: hidden; /* Penting agar border-radius pada thead terlihat */
+        background: var(--white, #ffffff);
+    }
+
+    .table-ekskul-saya-custom thead {
+        /* Background gradien diterapkan pada elemen thead */
+        background: linear-gradient(90deg, #5151e5 0%, #72edf2 100%);
+        color: var(--white, #ffffff); /* Warna teks default untuk header */
+    }
+
+    /* KUNCI PERBAIKAN untuk GRADIENT:
+      Membuat background th transparan dan menghapus border default-nya 
+      agar gradien dari thead dapat terlihat.
+    */
+    .table-ekskul-saya-custom thead th {
+        background-color: transparent ; /* Membuat background th transparan */
+        color: inherit ; /* Mewarisi warna teks dari thead (putih) */
+        text-align: left;
+        padding: 14px 18px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        border: none; /* Hapus border default dari th */
+    }
+
+    .table-ekskul-saya-custom tbody tr:hover {
+        background-color: #f1f6fb;
+    }
+
+    .table-ekskul-saya-custom tbody td {
+        padding: 12px 18px;
+        border-bottom: 1px solid #eef2f7;
+        vertical-align: middle;
+        font-size: 0.875rem;
+    }
+    .table-ekskul-saya-custom tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Badge Status yang dikustomisasi */
+    .status-badge {
+        padding: 0.35em 0.7em;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border-radius: 20px;
+        color: var(--white, #ffffff);
+        text-transform: capitalize;
+        display: inline-block;
+    }
+    .status-badge.disetujui, .status-badge.terdaftar { background-color: #28a745; }
+    .status-badge.menunggu { background-color: #ffc107; color: var(--dark, #333); }
+    .status-badge.ditolak { background-color: #dc3545; }
+    .status-badge.berhenti { background-color: #6c757d; }
+    .status-badge.default { background-color: #6c757d; }
+
+    /* Tombol Aksi "Detail" yang dikustomisasi */
+    .btn-detail-custom {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 14px; /* Padding disesuaikan agar tidak terlalu sempit */
+        font-size: 0.8rem;
+        font-weight: 500;
+        border-radius: 6px;
+        text-decoration: none;
+        white-space: nowrap;
+        background-color: var(--blue, #007bff);
+        color: var(--white, #ffffff);
+        border: 1px solid var(--blue, #007bff);
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .btn-detail-custom:hover {
+        background-color: #0056b3;
+        border-color: #0050a0;
+        color: var(--white, #ffffff);
+        text-decoration: none;
+    }
+    .btn-detail-custom .fas { /* Ikon di dalam tombol */
+        margin-right: 5px;
+    }
+
+    /* Tombol "Kembali ke Dashboard" di bawah tabel */
+    .actions-bawah-tabel {
+        margin-top: 25px;
+        text-align: center;
+    }
+    .actions-bawah-tabel .btn-kembali-utama {
+        display: inline-block;
+        padding: 10px 25px;
+        background: var(--yellow, #ffd700);
+        color: var(--dark, black);
+        border-radius: 30px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        text-decoration: none;
+        font-weight: 600;
+        transition: transform 0.2s, background-color 0.3s ease;
+    }
+    .actions-bawah-tabel .btn-kembali-utama:hover {
+        transform: translateY(-2px);
+        background-color: #e6c300; /* Kuning lebih gelap */
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container content-container">
     <h2>Ekstrakurikuler yang Saya Ikuti</h2>
-    <p>Halo, {{ nama_murid }}! Berikut adalah daftar ekstrakurikuler yang sedang atau pernah kamu ikuti.</p>
+    <p>Halo, <strong>{{ nama_murid }}</strong>! Berikut adalah daftar ekstrakurikuler yang sedang atau pernah Anda ikuti pada tahun ajaran {{ tahun_ajaran_aktif }}.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+            {# Asumsi .alert, .alert-dismissible, .btn-close dari Bootstrap sudah ada di layout_murid.html #}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
     {% if list_ekskul_diikuti %}
         <div class="table-responsive">
-            <table class="table table-hover table-striped">
-                <thead class="table-dark">
+            <table class="table-ekskul-saya-custom"> {# Menggunakan kelas tabel kustom #}
+                <thead>
                     <tr>
                         <th>Nama Ekstrakurikuler</th>
                         <th>Pembina</th>
-                        <th>Jadwal</th>
+                        <th>Deskripsi Jadwal</th>
                         <th>Status Pendaftaran</th>
                         <th>Tanggal Daftar</th>
-                        <th>Aksi</th> {# <--- KOLOM BARU UNTUK AKSI #}
+                        <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in list_ekskul_diikuti %}
                     <tr>
-                        <td>{{ item.nama_ekskul }}</td>
+                        <td><strong>{{ item.nama_ekskul }}</strong></td>
                         <td>{{ item.pembina | default('N/A') }}</td>
-                        <td>{{ item.jadwal | default('N/A') }}</td>
+                        <td>{{ item.jadwal | default('Belum ditentukan') }}</td>
                         <td>
-                            <span class="badge 
-                                {% if item.status_pendaftaran == 'Disetujui' or item.status_pendaftaran == 'Terdaftar' %} bg-success 
-                                {% elif item.status_pendaftaran == 'Menunggu Persetujuan' %} bg-warning text-dark
-                                {% elif item.status_pendaftaran == 'Ditolak' or item.status_pendaftaran == 'Berhenti' %} bg-danger
-                                {% else %} bg-secondary {% endif %}">
+                            <span class="status-badge 
+                                {% if item.status_pendaftaran == 'Disetujui' or item.status_pendaftaran == 'Terdaftar' %} disetujui
+                                {% elif item.status_pendaftaran == 'Menunggu Persetujuan' %} menunggu
+                                {% elif item.status_pendaftaran == 'Ditolak' %} ditolak
+                                {% elif item.status_pendaftaran == 'Berhenti' %} berhenti
+                                {% else %} default {% endif %}">
                                 {{ item.status_pendaftaran }}
                             </span>
                         </td>
                         <td>
                             {% if item.tanggal_pendaftaran %}
-                                {{ item.tanggal_pendaftaran.strftime('%d %B %Y, %H:%M') }}
+                                {{ item.tanggal_pendaftaran.strftime('%d %b %Y, %H:%M') }}
                             {% else %}
                                 N/A
                             {% endif %}
                         </td>
                         <td>
-                            {# Pastikan item.id_ekskul ada dari app.py #}
-                            <a href="{{ url_for('detail_ekskul_murid', ekskul_id=item.id_ekskul) }}" class="btn btn-sm btn-info">
-                                <i class="fas fa-eye"></i> Lihat Detail
+                            <a href="{{ url_for('detail_ekskul_murid', ekskul_id=item.id_ekskul) }}" class="btn-detail-custom">
+                                <i class="fas fa-eye"></i>&nbsp;Detail
                             </a>
                         </td>
                     </tr>
@@ -70,5 +194,9 @@
             <a href="{{ url_for('lihat_ekskul_murid') }}" class="alert-link">Lihat daftar ekskul tersedia.</a>
         </div>
     {% endif %}
+
+    <div class="actions-bawah-tabel">
+        <a class="btn-kembali-utama" href="{{ url_for('dashboard_murid') }}">Kembali ke Dashboard</a>
+    </div>
 </div>
 {% endblock %}

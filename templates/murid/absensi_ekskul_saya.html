@@ -1,32 +1,135 @@
-{% extends "murid/layout_murid.html" %} {% block title %}Rekap Absensi Ekskul Saya{% endblock %}
+{% extends "murid/layout_murid.html" %}
+
+{% block title %}Rekap Absensi Saya - {{ nama_murid }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Styling H2 utama halaman ini */
+    .content-container h2 {
+        color: var(--blue, #007bff);
+        border-bottom: 2px solid var(--blue, #007bff);
+        padding-bottom: 0.5em;
+        margin-bottom: 1.5em;
+    }
+
+    /* Kartu untuk setiap rekap ekskul */
+    .rekap-absen-ekskul-card {
+        background-color: var(--white, #ffffff);
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.07); /* Sedikit penyesuaian shadow */
+        margin-bottom: 2rem;
+        overflow: hidden; /* Agar header tidak keluar dari radius */
+    }
+
+    .rekap-absen-ekskul-card .card-header-custom {
+    background-color: var(--blue, #007bff); /* GANTI dari var(--dark) menjadi var(--blue) */
+    color: var(--white, #ffffff); /* Warna teks tetap putih agar kontras dengan biru */
+    padding: 1rem 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    /* Anda bisa tambahkan border bawah tipis jika suka, untuk memisahkan header dari body kartu */
+    /* border-bottom: 1px solid rgba(0,0,0,0.075); */
+}
+.rekap-absen-ekskul-card .card-header-custom h4 { /* Pastikan h4 di dalamnya juga mengikuti style */
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit; /* Mewarisi ketebalan font dari parent */
+    color: inherit; /* Mewarisi warna teks dari parent *
+
+    .rekap-absen-ekskul-card .card-body-custom {
+        padding: 1.5rem;
+    }
+
+    /* Tabel untuk detail absensi */
+    .table-rekap-absen {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        font-size: 0.9rem; /* Ukuran font isi tabel */
+    }
+
+    .table-rekap-absen thead {
+        /* Menggunakan gradien seperti tabel di ekskul_saya.html */
+        background: linear-gradient(90deg, #5e5ee0 0%, #72edf2 100%); /* Sedikit penyesuaian warna gradien */
+        color: var(--white, #ffffff);
+    }
+
+    .table-rekap-absen thead th {
+        background-color: transparent !important; /* Pastikan gradien thead terlihat */
+        color: inherit !important;
+        text-align: left;
+        padding: 12px 15px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.85rem; /* Ukuran font header tabel */
+        border: none;
+    }
+
+    .table-rekap-absen tbody tr:hover {
+        background-color: #f5f9fd; /* Warna hover lebih lembut */
+    }
+
+    .table-rekap-absen tbody td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #eef2f7; /* Border antar baris lebih lembut */
+        vertical-align: middle;
+    }
+    .table-rekap-absen tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Badge Status Kehadiran */
+    .absen-status-badge {
+        padding: 0.35em 0.75em;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border-radius: 15px; /* Badge lebih bulat */
+        color: var(--white, #ffffff);
+        text-transform: capitalize;
+    }
+    .absen-status-badge.hadir { background-color: #28a745; }  /* Hijau */
+    .absen-status-badge.izin { background-color: #17a2b8; }   /* Info/Cyan */
+    .absen-status-badge.sakit { background-color: #ffc107; color: var(--dark, #333); } /* Kuning */
+    .absen-status-badge.alfa { background-color: #dc3545; }   /* Merah */
+    .absen-status-badge.default { background-color: #6c757d; } /* Abu-abu */
+
+    .no-records-info { /* Pesan jika tidak ada catatan */
+        color: #555;
+        font-style: italic;
+        padding: 1rem 0;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container content-container">
     <h2>Rekap Absensi Ekstrakurikuler Saya</h2>
-    <p>Halo, {{ nama_murid }}! Berikut adalah rekap absensi Anda untuk tahun ajaran {{ tahun_ajaran_aktif }}.</p>
+    <p>Halo, <strong>{{ nama_murid }}</strong>! Berikut adalah rekap absensi Anda untuk tahun ajaran {{ tahun_ajaran_aktif }}.</p>
+    <br>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
     {% if attendance_by_ekskul %}
         {% for nama_ekskul, records in attendance_by_ekskul.items() %}
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Ekstrakurikuler: {{ nama_ekskul }}</h4>
+            <div class="rekap-absen-ekskul-card">
+                <div class="card-header-custom">
+                    <h4>Ekstrakurikuler: {{ nama_ekskul }}</h4>
                 </div>
-                <div class="card-body">
+                <div class="card-body-custom">
                     {% if records %}
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover table-sm">
-                                <thead class="table-light">
+                            <table class="table-rekap-absen">
+                                <thead>
                                     <tr>
                                         <th>Tanggal Kegiatan</th>
                                         <th>Jam Mulai</th>
@@ -39,14 +142,14 @@
                                     {% for record in records %}
                                     <tr>
                                         <td>{{ record.tanggal_kegiatan.strftime('%d %B %Y') if record.tanggal_kegiatan else 'N/A' }}</td>
-                                        <td>{{ record.jam_mulai_kegiatan_str }}</td>
+                                        <td>{{ record.jam_mulai_kegiatan_str | default('-', true) }}</td>
                                         <td>
-                                            <span class="badge 
-                                                {% if record.status_kehadiran == 'Hadir' %} bg-success
-                                                {% elif record.status_kehadiran == 'Izin' %} bg-info text-dark
-                                                {% elif record.status_kehadiran == 'Sakit' %} bg-warning text-dark
-                                                {% elif record.status_kehadiran == 'Alfa' %} bg-danger
-                                                {% else %} bg-secondary {% endif %}">
+                                            <span class="absen-status-badge 
+                                                {% if record.status_kehadiran == 'Hadir' %} hadir
+                                                {% elif record.status_kehadiran == 'Izin' %} izin
+                                                {% elif record.status_kehadiran == 'Sakit' %} sakit
+                                                {% elif record.status_kehadiran == 'Alfa' %} alfa
+                                                {% else %} default {% endif %}">
                                                 {{ record.status_kehadiran }}
                                             </span>
                                         </td>
@@ -58,15 +161,23 @@
                             </table>
                         </div>
                     {% else %}
-                        <p class="text-muted">Belum ada catatan absensi untuk ekskul ini.</p>
+                        <p class="no-records-info">Belum ada catatan absensi untuk ekskul ini.</p>
                     {% endif %}
                 </div>
             </div>
         {% endfor %}
     {% else %}
+        {# Asumsi .alert dan .alert-info dari Bootstrap sudah ada di layout #}
         <div class="alert alert-info mt-3" role="alert">
             Belum ada catatan absensi ekstrakurikuler untuk Anda pada tahun ajaran ini.
         </div>
     {% endif %}
+
+    <div class="actions-bawah-tabel" style="margin-top: 2rem;"> {# Menggunakan kelas .actions-bawah-tabel dan .cta dari layout #}
+        <a class="cta" href="{{ url_for('dashboard_murid') }}">
+            <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+        </a>
+    </div>
+
 </div>
 {% endblock %}

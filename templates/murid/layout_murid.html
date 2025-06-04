@@ -1,139 +1,300 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Portal Murid{% endblock %}</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{% block title %}Portal Ekstrakurikuler Murid{% endblock %}</title> {# Judul default, bisa di-override #}
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0 0 60px 0; /* Tambahkan padding-bottom untuk footer */
-            background-color: #f4f4f4;
-            color: #333;
+      :root {
+        --blue: #007bff;
+        --yellow: #ffd700;
+        --white: #ffffff;
+        --gray: #f4f4f4;
+        --dark: #333;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Poppins', sans-serif;
+        background-color: var(--gray);
+        color: var(--dark);
+        line-height: 1.6;
+        display: flex; /* Untuk sticky footer */
+        flex-direction: column; /* Untuk sticky footer */
+        min-height: 100vh; /* Untuk sticky footer */
+      }
+
+      header {
+        background: var(--blue);
+        color: var(--white);
+        padding: 2rem 1rem;
+        text-align: center;
+        background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); /* Anda bisa ganti atau buat ini dinamis jika perlu */
+      }
+
+      header h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      nav {
+        background: var(--dark);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Tambahan shadow untuk nav */
+      }
+
+      nav a {
+        color: white;
+        text-decoration: none;
+        padding: 1rem 1.2rem; /* Sedikit penyesuaian padding */
+        transition: background 0.3s ease, color 0.3s ease; /* Transisi warna juga */
+      }
+
+      nav a:hover, nav a.active { /* Kelas 'active' untuk menandai halaman aktif */
+        background: var(--blue);
+        color: var(--white); /* Pastikan teks tetap terlihat */
+      }
+      nav a .fas { /* Styling untuk ikon di nav jika ada */
+          margin-right: 8px;
+      }
+
+      /* .container akan ada di child template, tapi kita bisa siapkan wrapper jika perlu */
+      .main-content-wrapper {
+          flex-grow: 1; /* Untuk sticky footer */
+      }
+
+      /* Styling umum yang mungkin dipakai di banyak halaman anak */
+      .container {
+        max-width: 1100px;
+        margin: 2rem auto;
+        padding: 1.5rem; /* Sedikit penyesuaian padding */
+        background: var(--white);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+      }
+
+      section {
+        margin-bottom: 2.5rem;
+      }
+      section:last-child {
+          margin-bottom: 0; /* Hapus margin bawah untuk section terakhir di container */
+      }
+
+      h2 {
+        color: var(--blue);
+        margin-bottom: 1.5rem; /* Sedikit penyesuaian margin */
+        border-left: 6px solid var(--yellow);
+        padding-left: 12px; /* Sedikit penyesuaian padding */
+        font-size: 1.8rem; /* Sedikit penyesuaian ukuran font */
+      }
+      
+      h3 {
+          color: var(--dark);
+          font-size: 1.5rem;
+          margin-bottom: 1rem;
+      }
+      h5 {
+          color: var(--blue);
+          font-size: 1.1rem;
+          margin-bottom: 0.5rem;
+      }
+
+
+      /* --- Styling untuk elemen umum dari dashboard_murid.html --- */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+
+      th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left; /* Default text align */
+      }
+
+      th {
+        background-color: #e6f0ff;
+        font-weight: 600; /* Membuat header tabel lebih tebal */
+      }
+      
+      tbody tr:hover {
+        background-color: #f1f6fb; /* Efek hover untuk baris tabel */
+      }
+
+      .materi-list {
+        list-style: none;
+        padding: 0;
+      }
+
+      .materi-item {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background: #f9f9f9;
+        border-left: 5px solid var(--blue);
+        transition: transform 0.2s, box-shadow 0.2s; /* Tambahkan transisi shadow */
+        border-radius: 6px; /* Sedikit border radius */
+      }
+
+      .materi-item:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Shadow saat hover */
+      }
+
+      .materi-item a {
+        color: var(--dark);
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Penyesuaian minmax */
+        gap: 1.5rem;
+      }
+
+      .card {
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        padding: 1.5rem;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex; /* Untuk alignment konten card */
+        flex-direction: column; /* Konten card tersusun vertikal */
+        justify-content: space-between; /* Untuk menata tombol CTA */
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+      }
+
+      .card img {
+        width: 80px;
+        height: 80px;
+        object-fit: contain;
+        margin: 0 auto 1rem auto; /* Pusatkan gambar dan beri margin bawah */
+      }
+
+      .card h3 {
+        margin-bottom: 0.5rem;
+        font-size: 1.25rem; /* Sesuaikan ukuran font */
+        color: var(--blue);
+      }
+      .card p {
+          font-size: 0.9rem;
+          color: #555;
+          margin-bottom: 0.5rem;
+      }
+      .card .details { /* Wrapper untuk detail seperti pembina, jadwal */
+          flex-grow: 1;
+      }
+
+
+      .cta {
+        display: inline-block;
+        margin-top: 1rem; /* penyesuaian margin */
+        padding: 0.6rem 1.2rem; /* penyesuaian padding */
+        background: var(--yellow);
+        color: var(--dark); /* ubah warna teks agar kontras dengan kuning */
+        border-radius: 25px; /* penyesuaian radius */
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600; /* buat teks cta lebih tebal */
+        transition: background-color 0.3s ease, transform 0.2s ease;
+      }
+      .cta:hover {
+          background-color: #e6c300; /* Warna kuning lebih gelap saat hover */
+          transform: translateY(-2px);
+          text-decoration: none; /* Hapus underline saat hover jika tidak diinginkan */
+      }
+      .cta-secondary { /* Tombol alternatif */
+          background-color: var(--blue);
+          color: var(--white);
+      }
+      .cta-secondary:hover {
+          background-color: #0056b3; /* Warna biru lebih gelap */
+      }
+
+
+      footer {
+        text-align: center;
+        padding: 1.5rem;
+        background-color: #002b5b; /* Warna gelap untuk footer */
+        color: white;
+        margin-top: auto; /* Untuk sticky footer */
+      }
+
+      @media screen and (max-width: 768px) { /* Penyesuaian breakpoint */
+        nav a {
+          padding: 0.8rem 1rem;
+          font-size: 0.95rem;
         }
-        header {
-            background-color: #007bff; /* Warna biru dari index.html */
-            color: white;
-            padding: 1em 0;
-            text-align: center;
+        h1 { font-size: 1.8rem; }
+        h2 { font-size: 1.5rem; }
+        .container {
+            margin: 1.5rem auto;
+            padding: 1rem;
         }
-        nav.murid-nav { /* Class khusus untuk navigasi murid */
-            background-color: #333;
-            color: white;
-            padding: 0.5em 0;
-            text-align: center;
-            margin-bottom: 20px; /* Beri jarak dari konten */
+      }
+       @media screen and (max-width: 600px) {
+        nav {
+            flex-direction: column; /* Nav menjadi vertikal di layar kecil */
+            align-items: center;
         }
-        nav.murid-nav a {
-            color: white;
-            text-decoration: none;
-            padding: 0.7em 1.5em;
-            display: inline-block;
+        nav a {
+          padding: 0.75rem;
+          font-size: 0.9rem;
+          width: 100%; /* Nav item mengambil lebar penuh */
+          text-align: center;
+          border-bottom: 1px solid #444; /* Pemisah antar nav item */
         }
-        nav.murid-nav a:hover, nav.murid-nav a.active { /* Tambahkan class active */
-            background-color: #555;
+        nav a:last-child {
+            border-bottom: none;
         }
-        .container-layout { /* Ganti nama class agar tidak konflik jika ada .container di child */
-            width: 80%;
-            margin: 0 auto 20px auto; /* Sesuaikan margin */
-            background-color: white;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            min-height: calc(100vh - 180px); /* Perkiraan tinggi untuk mendorong footer */
+        .card-grid {
+            grid-template-columns: 1fr; /* Satu kartu per baris di layar sangat kecil */
         }
-        footer {
-            text-align: center;
-            padding: 1em 0;
-            background-color: #333;
-            color: white;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-        }
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-        }
-        .alert-success {
-            color: #155724;
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-        }
-        .alert-danger {
-            color: #721c24;
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-        }
-        .alert-warning {
-            color: #856404;
-            background-color: #fff3cd;
-            border-color: #ffeeba;
-        }
-        .alert-info {
-            color: #0c5460;
-            background-color: #d1ecf1;
-            border-color: #bee5eb;
-        }
-        .btn-close { 
-            float: right;
-            font-size: 1.2rem;
-            font-weight: bold;
-            line-height: 1;
-            color: #000;
-            text-shadow: 0 1px 0 #fff;
-            opacity: .5;
-            background: transparent;
-            border: 0;
-            cursor: pointer;
-        }
-        .btn-close:hover {
-            color: #000;
-            opacity: .75;
-        }
+      }
     </style>
-    {% block head_extra %}{% endblock %}
+    {% block head_extra %}{% endblock %} {# Untuk CSS atau script tambahan di head per halaman #}
 </head>
 <body>
     <header>
-        <h1>Portal Ekstrakurikuler Murid</h1>
+      <h1>Ekstrakurikuler Siswa</h1>
+      <p>Temukan aktivitas seru dan kembangkan bakatmu!</p>
     </header>
 
-    <nav class="murid-nav">
-        <a href="{{ url_for('dashboard_murid') }}" class="{% if request.endpoint == 'dashboard_murid' %}active{% endif %}">Dashboard</a>
-        <a href="{{ url_for('lihat_ekskul_murid') }}" class="{% if request.endpoint == 'lihat_ekskul_murid' %}active{% endif %}">Lihat Ekskul</a>
-        <a href="{{ url_for('ekskul_saya_murid') }}" class="{% if request.endpoint == 'ekskul_saya_murid' %}active{% endif %}">Ekskul Saya</a>
-        <a href="{{ url_for('lihat_absensi_ekskul_saya') }}" class="{% if request.endpoint == 'lihat_absensi_ekskul_saya' %}active{% endif %}">Absensi Saya</a>
-        <a href="{{ url_for('edit_profil_murid') }}" class="{% if request.endpoint == 'edit_profil_murid' %}active{% endif %}">Edit Profil</a>
-        {% if session.user_id %}
-        <a href="{{ url_for('logout') }}">Logout ({{ session.nama_lengkap }})</a>
-        {% else %}
-        <a href="{{ url_for('login') }}">Login</a>
-        {% endif %}
+    <nav>
+      {# Tautan navigasi dinamis dari dashboard_murid.html Anda #}
+      <a href="{{ url_for('dashboard_murid') }}"><i class="fas fa-home"></i> Dashboard</a>
+      <a href="{{ url_for('lihat_ekskul_murid') }}"><i class="fas fa-th-list"></i> Daftar Ekskul</a>
+      <a href="{{ url_for('ekskul_saya_murid') }}"><i class="fas fa-star"></i> Ekskul Saya</a>
+      <a href="{{ url_for('lihat_absensi_ekskul_saya') }}"><i class="fas fa-calendar-check"></i> Absensi Saya</a>
+      <a href="{{ url_for('edit_profil_murid') }}"><i class="fas fa-user-edit"></i> Profil Saya</a>
+      <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </nav>
 
-    <div class="container-layout">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% block content %}
-        {% endblock %}
+    <div class="main-content-wrapper">
+      {% block content %}
+      {% endblock %}
     </div>
 
     <footer>
-        <p>&copy; {% block year %}{{ now.year }}{% endblock %} Sekolah Anda. All rights reserved.</p>
+      &copy; {{ now.year if now else '2025' }} Ekstrakurikuler Sekolah - Dibuat dengan <span style="color: var(--blue);">💙</span><span style="color: var(--yellow);">💛</span>
     </footer>
-    
-    {% block scripts_extra %}{% endblock %}
+
+    {% block scripts %}{% endblock %} {# Untuk script tambahan di akhir body per halaman #}
 </body>
 </html>

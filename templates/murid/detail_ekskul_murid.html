@@ -1,26 +1,153 @@
 {% extends "murid/layout_murid.html" %}
 
-{% block title %}Detail Ekstrakurikuler: {{ ekskul.nama_ekskul }}{% endblock %}
+{% block title %}Detail: {{ ekskul.nama_ekskul }} - Portal Ekskul{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Styling spesifik untuk halaman detail ekskul */
+    /* Kartu Utama untuk Detail Ekskul */
+    .detail-ekskul-info-card {
+        background-color: var(--white, #ffffff);
+        padding: 1.5rem 2rem;
+        border-radius: 12px; /* Sesuai dengan .container di layout */
+        box-shadow: 0 8px 16px rgba(0,0,0,0.05); /* Sesuai dengan .container di layout */
+        margin-bottom: 2.5rem;
+    }
+
+    .detail-ekskul-info-card .nama-ekskul-heading {
+        color: var(--blue, #007bff);
+        margin-top: 0;
+        margin-bottom: 1.25rem; /* Penyesuaian margin */
+        font-size: 2rem;
+        border-bottom: 3px solid var(--yellow, #ffd700);
+        padding-bottom: 0.75rem;
+    }
+
+    .detail-ekskul-info-card strong {
+        font-weight: 600;
+    }
+    .detail-ekskul-info-card p, 
+    .detail-ekskul-info-card .deskripsi-konten {
+        margin-bottom: 0.9rem;
+        line-height: 1.7;
+        font-size: 0.95rem;
+        color: #454545;
+    }
+    .deskripsi-konten {
+        background-color: var(--gray, #f4f4f4);
+        padding: 1rem;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        border: 1px solid #e0e0e0;
+    }
+    .detail-ekskul-info-card hr {
+        margin: 1.75rem 0; /* Jarak lebih tegas */
+        border-top: 1px solid #e0e0e0;
+    }
+
+    /* Badge untuk Status Ekskul di halaman ini */
+    .status-badge-detail {
+        padding: 0.4em 0.9em;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border-radius: 20px;
+        color: var(--white, #ffffff);
+        text-transform: capitalize;
+    }
+    .status-badge-detail.aktif { background-color: #28a745; }
+    .status-badge-detail.nonaktif { background-color: #dc3545; }
+
+    /* Section Materi (h2 akan mengikuti style global dari layout) */
+    #materi-ekskul-section {
+        margin-bottom: 2rem;
+    }
+
+    /* Item Materi - Adaptasi dari .materi-item di layout atau dashboard */
+    .materi-display-item {
+        background: var(--white, #ffffff);
+        border-left: 5px solid var(--blue, #007bff);
+        padding: 1.25rem 1.5rem; /* Padding disesuaikan */
+        margin-bottom: 1.25rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .materi-display-item .materi-title {
+        font-weight: 600;
+        font-size: 1.2rem;
+        color: var(--dark, #333);
+        margin-bottom: 0.5rem;
+    }
+    .materi-display-item .materi-meta-info { /* Untuk tipe konten */
+        font-size: 0.8em;
+        color: #555;
+        margin-bottom: 0.75rem;
+        background-color: var(--gray, #f4f4f4);
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: inline-block; /* Agar background pas dengan teks */
+    }
+    .materi-display-item .materi-deskripsi {
+        font-size: 0.9rem;
+        color: #444;
+        margin-bottom: 1rem;
+    }
+    .materi-display-item .materi-action-button {
+        display: inline-flex; align-items: center;
+        padding: 8px 16px; font-size: 0.85rem; font-weight: 500;
+        text-decoration: none; border-radius: 20px;
+        color: var(--white, #ffffff);
+        transition: background-color 0.2s ease, transform 0.2s ease;
+        margin-top: 0.5rem; border: none;
+    }
+    .materi-display-item .materi-action-button:hover { transform: translateY(-1px); }
+    .materi-display-item .materi-action-button .fas { margin-right: 7px; }
+
+    .materi-display-item .btn-download-materi { background-color: var(--blue, #007bff); }
+    .materi-display-item .btn-download-materi:hover { background-color: #0056b3; }
+    .materi-display-item .btn-link-materi { background-color: #17a2b8; }
+    .materi-display-item .btn-link-materi:hover { background-color: #117a8b; }
+    .materi-display-item .btn-teks-materi { background-color: #6c757d; }
+    .materi-display-item .btn-teks-materi:hover { background-color: #545b62; }
+
+    /* Video Embed & Teks Collapse (bergantung pada Bootstrap JS di layout) */
+    .materi-display-item .embed-responsive { margin-top: 0.75rem; border-radius: 6px; overflow: hidden; position: relative; display: block; width: 100%; padding: 0;}
+    .materi-display-item .embed-responsive::before { display: block; content: ""; }
+    .materi-display-item .embed-responsive-16by9::before { padding-top: 56.25%; }
+    .materi-display-item .embed-responsive .embed-responsive-item,
+    .materi-display-item .embed-responsive iframe, .materi-display-item .embed-responsive video { position: absolute; top: 0; bottom: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    .materi-display-item .teks-materi-collapsed {
+        background-color: #f0f0f0; border: 1px solid #d8d8d8;
+        padding: 1rem; font-size: 0.9rem; white-space: pre-wrap;
+        border-radius: 6px; margin-top: 0.75rem;
+    }
+    .materi-display-item .uploader-info { margin-top: 1rem; font-size: 0.8em; color: #777; }
+
+    .no-materi-info {
+        background-color: var(--gray, #f4f4f4);
+        padding: 1.5rem; text-align: center; border-radius: 8px;
+        color: #555; border: 1px dashed #ccc; /* Border lebih lembut */
+    }
+
+    /* Tombol Kembali di bagian paling bawah */
+    .action-buttons-bottom { text-align: center; margin-top: 2.5rem; margin-bottom: 1rem; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('dashboard_murid') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('ekskul_saya_murid') }}">Ekskul Saya</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{ ekskul.nama_ekskul }}</li>
-        </ol>
-    </nav>
-
-    <div class="card shadow-sm">
-        <div class="card-header bg-info text-white">
-            <h2 class="card-title mb-0">{{ ekskul.nama_ekskul }}</h2>
-        </div>
-        <div class="card-body">
+<div class="container"> {# Menggunakan .container dari layout untuk padding dan max-width #}
+    <section id="detail-ekskul-utama">
+        <div class="detail-ekskul-info-card">
+            <h2 class="nama-ekskul-heading">{{ ekskul.nama_ekskul }}</h2>
             <p><strong>Kategori:</strong> {{ ekskul.kategori | default('Tidak ada kategori', true) }}</p>
             <p><strong>Pembina:</strong> {{ ekskul.nama_guru_pembina | default('Belum ada pembina', true) }}</p>
+            
+            {% if ekskul.deskripsi %}
             <p><strong>Deskripsi:</strong></p>
-            <div style="white-space: pre-wrap;">{{ ekskul.deskripsi | default('Tidak ada deskripsi.', true) }}</div>
+            <div class="deskripsi-konten">{{ ekskul.deskripsi }}</div>
+            {% else %}
+            <p><strong>Deskripsi:</strong> Tidak ada deskripsi.</p>
+            {% endif %}
+            
             <hr>
             <p><strong>Jadwal:</strong> {{ ekskul.jadwal_deskripsi | default('Jadwal belum ditentukan.', true) }}</p>
             <p><strong>Lokasi:</strong> {{ ekskul.lokasi | default('Lokasi belum ditentukan.', true) }}</p>
@@ -32,59 +159,69 @@
                 {% endif %}
             </p>
             <p><strong>Status Ekskul:</strong> 
-                <span class="badge {% if ekskul.status_aktif %}bg-success{% else %}bg-danger{% endif %}">
+                <span class="status-badge-detail-page {% if ekskul.status_aktif %}aktif{% else %}nonaktif{% endif %}">
                     {{ "Aktif" if ekskul.status_aktif else "Tidak Aktif" }}
                 </span>
             </p>
         </div>
-    </div>
+    </section>
 
-    <div class="mt-4">
-        <h3><i class="fas fa-book-open"></i> Materi Ekstrakurikuler</h3>
+    <section id="materi-ekskul-section">
+        {# Judul H2 ini akan mengambil style dari layout_murid.html #}
+        <h2><i class="fas fa-book-open"></i> Materi Ekstrakurikuler</h2> 
+        
         {% if materi_list %}
             {% for materi in materi_list %}
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <strong>{{ materi.judul_materi }}</strong> (Tipe: {{ materi.tipe_konten }})
+                <div class="materi-display-item">
+                    <div class="materi-title">
+                        {{ materi.judul_materi }} 
+                        <span class="materi-meta-info">(Tipe: {{ materi.tipe_konten }})</span>
                     </div>
-                    <div class="card-body">
+                    <div class="materi-konten-utama">
                         {% if materi.deskripsi_materi %}
-                            <p>{{ materi.deskripsi_materi }}</p>
+                            <p class="materi-deskripsi">{{ materi.deskripsi_materi }}</p>
                         {% endif %}
 
                         {% if materi.tipe_konten == 'file' and materi.path_konten_atau_link %}
-                            <a href="{{ url_for('static', filename='uploads/materi_ekskul/' + materi.path_konten_atau_link) }}" target="_blank" class="btn btn-sm btn-primary">
-                                <i class="fas fa-download"></i> Unduh/Lihat File: {{ materi.path_konten_atau_link }}
+                            <a href="{{ url_for('static', filename='uploads/materi_ekskul/' + materi.path_konten_atau_link) }}" target="_blank" class="materi-action-button btn-download-materi">
+                                <i class="fas fa-download"></i> Unduh/Lihat: {{ materi.path_konten_atau_link }}
                             </a>
                         {% elif materi.tipe_konten == 'link' and materi.path_konten_atau_link %}
-                            <a href="{{ materi.path_konten_atau_link }}" target="_blank" class="btn btn-sm btn-info">
+                            <a href="{{ materi.path_konten_atau_link }}" target="_blank" class="materi-action-button btn-link-materi">
                                 <i class="fas fa-external-link-alt"></i> Buka Link
                             </a>
                         {% elif materi.tipe_konten == 'video_embed' and materi.path_konten_atau_link %}
-                            <div class="embed-responsive embed-responsive-16by9 mt-2">
+                            <div class="embed-responsive embed-responsive-16by9">
                                 {{ materi.path_konten_atau_link | safe }}
                             </div>
                         {% elif materi.tipe_konten == 'teks' and materi.isi_konten_teks %}
-                             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#materiTeksDetail{{materi.id_materi_ekskul}}" aria-expanded="false" aria-controls="materiTeksDetail{{materi.id_materi_ekskul}}">
-                                <i class="fas fa-align-left"></i> Tampilkan Isi Teks
-                            </button>
-                            <div class="collapse mt-2" id="materiTeksDetail{{materi.id_materi_ekskul}}">
-                                <div class="card card-body bg-light small" style="white-space: pre-wrap;">
-                                    {{ materi.isi_konten_teks | safe }}
-                                </div>
-                            </div>
+                             <button class="materi-action-button btn-teks-materi" type="button" data-bs-toggle="collapse" data-bs-target="#materiTeksDetail{{materi.id_materi_ekskul}}" aria-expanded="false" aria-controls="materiTeksDetail{{materi.id_materi_ekskul}}">
+                                 <i class="fas fa-align-left"></i> Tampilkan Isi Teks
+                             </button>
+                             <div class="collapse mt-2" id="materiTeksDetail{{materi.id_materi_ekskul}}">
+                                 <div class="teks-materi-collapsed">
+                                     {{ materi.isi_konten_teks | safe }}
+                                 </div>
+                             </div>
                         {% else %}
-                            <p class="text-muted"><small>Konten tidak tersedia atau tidak dapat ditampilkan.</small></p>
+                            <p style="color: #777; font-style: italic;"><small>Konten tidak tersedia atau tidak dapat ditampilkan.</small></p>
                         {% endif %}
-                        <p class="card-text mt-2"><small class="text-muted">Diunggah oleh: {{ materi.nama_pengunggah | default('N/A') }} pada {{ materi.tanggal_unggah.strftime('%d %B %Y, %H:%M') if materi.tanggal_unggah else 'N/A' }}</small></p>
+                        <p class="uploader-info"><small>Diunggah oleh: {{ materi.nama_pengunggah | default('N/A') }} pada {{ materi.tanggal_unggah.strftime('%d %b %Y, %H:%M') if materi.tanggal_unggah else 'N/A' }}</small></p>
                     </div>
                 </div>
             {% endfor %}
         {% else %}
-            <div class="alert alert-light" role="alert">
-                Belum ada materi untuk ekstrakurikuler ini.
+            <div class="no-materi-info">
+                <p>Belum ada materi untuk ekstrakurikuler ini.</p>
             </div>
         {% endif %}
+    </section>
+
+     <div class="action-buttons-bottom">
+        <a href="{{ url_for('ekskul_saya_murid') }}" class="cta"> {# Menggunakan .cta dan .cta-secondary dari layout #}
+            <i class="fas fa-arrow-left"></i> Kembali ke Ekskul Saya
+        </a>
     </div>
+
 </div>
 {% endblock %}
