@@ -46,6 +46,6 @@
         {% endif %}
 
         <button type="submit" class="btn btn-primary">{{ action }} Pengguna</button>
-        <a href="{{ url_for('users_admin') }}" class="btn btn-secondary">Batal</a>
+        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#pengguna-content' }}" class="btn btn-secondary">Batal</a>
     </form>
 {% endblock %}

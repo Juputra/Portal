@@ -87,6 +87,6 @@
     </div>
 
     <button type="submit" class="btn btn-primary">{{ action }} Absensi</button>
-    <a href="{{ url_for('list_absensi_ekskul_admin') }}" class="btn btn-secondary">Batal</a>
+     <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#absensi-ekskul-content' }}" class="btn btn-secondary">Batal</a>
 </form>
 {% endblock %}

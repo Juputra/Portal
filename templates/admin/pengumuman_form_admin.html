@@ -50,6 +50,6 @@
         <p><small class="text-muted">Jika Target Peran, Kelas, dan Ekskul tidak dipilih, pengumuman akan berlaku untuk semua pengguna.</small></p>
 
         <button type="submit" class="btn btn-primary">{{ action }} Pengumuman</button>
-        <a href="{{ url_for('pengumuman_admin') }}" class="btn btn-secondary">Batal</a>
+        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#pengumuman-content' }}" class="btn btn-secondary">Batal</a>
     </form>
 {% endblock %}

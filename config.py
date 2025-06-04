@@ -208,186 +208,6 @@ class Config:
         finally:
             if conn.open: conn.close()
 
-    # --- Class Management ---
-    def get_all_kelas(self):
-        conn = self._get_connection()
-        kelas_list = []
-        try:
-            with conn.cursor() as cursor:
-                # Menggunakan LEFT JOIN untuk tetap menampilkan kelas meskipun tidak ada wali kelas
-                sql = """SELECT k.*, p.nama_lengkap AS nama_wali_kelas 
-                         FROM Kelas k 
-                         LEFT JOIN Pengguna p ON k.id_wali_kelas = p.id_pengguna
-                         ORDER BY k.nama_kelas"""
-                cursor.execute(sql)
-                kelas_list = cursor.fetchall()
-        except pymysql.MySQLError as e:
-            print(f"Error fetching all kelas: {e}")
-        finally:
-            conn.close()
-        return kelas_list
-
-    def add_kelas(self, kelas_data):
-        conn = self._get_connection()
-        new_kelas_id = None
-        try:
-            with conn.cursor() as cursor:
-                sql = """INSERT INTO Kelas (nama_kelas, tahun_ajaran, id_wali_kelas, deskripsi)
-                         VALUES (%s, %s, %s, %s)"""
-                cursor.execute(sql, (
-                    kelas_data['nama_kelas'],
-                    kelas_data['tahun_ajaran'],
-                    kelas_data.get('id_wali_kelas'), # Bisa NULL
-                    kelas_data.get('deskripsi')
-                ))
-                conn.commit()
-                new_kelas_id = cursor.lastrowid
-        except pymysql.MySQLError as e:
-            print(f"Error adding kelas: {e}")
-            conn.rollback()
-        finally:
-            conn.close()
-        return new_kelas_id
-
-
-    def get_kelas_by_id(self, kelas_id):
-      conn = self._get_connection()
-      kelas_info = None
-      try:
-        with conn.cursor() as cursor:
-            sql = """SELECT k.*, p.nama_lengkap AS nama_wali_kelas 
-                     FROM Kelas k 
-                     LEFT JOIN Pengguna p ON k.id_wali_kelas = p.id_pengguna 
-                     WHERE k.id_kelas = %s"""
-            cursor.execute(sql, (kelas_id,))
-            kelas_info = cursor.fetchone()
-      except pymysql.MySQLError as e:
-        print(f"Error fetching kelas by id: {e}")
-      finally:
-        conn.close()
-      return kelas_info
-    
-    def delete_kelas(self, kelas_id):
-      conn = self._get_connection()
-      try:
-          with conn.cursor() as cursor:
-              # DDL kita untuk EnrollmentMurid memiliki ON DELETE CASCADE pada fk_kelas.
-              # Jadi, menghapus kelas akan otomatis menghapus enrollment murid di kelas tersebut.
-              sql = "DELETE FROM Kelas WHERE id_kelas = %s"
-              cursor.execute(sql, (kelas_id,))
-              conn.commit()
-              return cursor.rowcount > 0 # True jika ada baris yang terhapus
-      except pymysql.MySQLError as e:
-          print(f"Error deleting kelas {kelas_id}: {e}")
-          conn.rollback()
-          return False
-      finally:
-          conn.close()
-
-    # --- Enrollment Management ---
-    def get_students_in_class(self, kelas_id):
-      conn = self._get_connection()
-      students = []
-      try:
-          with conn.cursor() as cursor:
-            # Ambil siswa yang status enrollmentnya 'aktif'
-            sql = """SELECT p.id_pengguna, p.nama_lengkap, p.nomor_induk, p.email 
-                     FROM Pengguna p
-                     JOIN EnrollmentMurid em ON p.id_pengguna = em.id_murid
-                     WHERE em.id_kelas = %s AND p.peran = 'murid' AND em.status_enrollment = 'aktif'
-                     ORDER BY p.nama_lengkap"""
-            cursor.execute(sql, (kelas_id,))
-            students = cursor.fetchall()
-      except pymysql.MySQLError as e:
-        print(f"Error fetching students in class: {e}")
-      finally:
-        conn.close()
-      return students
-
-    def get_all_active_murid_exclude_kelas(self, kelas_id_to_check, tahun_ajaran_aktif):
-        # Metode ini mengambil semua murid aktif yang BELUM terdaftar di kelas_id_to_check
-        # PADA tahun_ajaran_aktif. Ini untuk dropdown agar tidak menampilkan murid yang sudah ada di kelas tsb.
-        # Atau, bisa juga mengambil murid yang belum terdaftar di kelas MANAPUN pada tahun ajaran tsb.
-        # Ini contoh yang lebih sederhana: mengambil semua murid aktif.
-        # Anda mungkin perlu query yang lebih kompleks untuk kasus nyata.
-        conn = self._get_connection()
-        murid_list = []
-        try:
-            with conn.cursor() as cursor:
-                # Ambil semua murid aktif yang belum ada di kelas spesifik ini pada tahun ajaran ini
-                sql = """
-                    SELECT p.id_pengguna, p.nama_lengkap, p.nomor_induk
-                    FROM Pengguna p
-                    WHERE p.peran = 'murid' AND p.status_aktif = TRUE
-                    AND p.id_pengguna NOT IN (
-                        SELECT em.id_murid
-                        FROM EnrollmentMurid em
-                        WHERE em.id_kelas = %s AND em.tahun_ajaran = %s AND em.status_enrollment = 'aktif'
-                    )
-                    ORDER BY p.nama_lengkap;
-                """
-                # Jika Anda ingin mengambil murid yang belum terdaftar di kelas MANAPUN pada tahun ajaran ini:
-                # sql = """
-                #     SELECT p.id_pengguna, p.nama_lengkap, p.nomor_induk
-                #     FROM Pengguna p
-                #     LEFT JOIN EnrollmentMurid em ON p.id_pengguna = em.id_murid AND em.tahun_ajaran = %s AND em.status_enrollment = 'aktif'
-                #     WHERE p.peran = 'murid' AND p.status_aktif = TRUE AND em.id_kelas IS NULL
-                #     ORDER BY p.nama_lengkap;
-                # """
-                # Untuk query di atas (yang belum terdaftar di kelas MANAPUN), parameternya hanya (tahun_ajaran_aktif,)
-                cursor.execute(sql, (kelas_id_to_check, tahun_ajaran_aktif))
-                murid_list = cursor.fetchall()
-        except pymysql.MySQLError as e:
-            print(f"Error fetching active murid for enrollment: {e}")
-        finally:
-            conn.close()
-        return murid_list
-
-    def enroll_student_to_class(self, murid_id, kelas_id, tahun_ajaran, status_enrollment='aktif'):
-        conn = self._get_connection()
-        try:
-            with conn.cursor() as cursor:
-                # Cek dulu apakah murid sudah terdaftar di kelas ini pada tahun ajaran ini
-                # Sebenarnya UNIQUE constraint di DB sudah menangani ini, tapi cek di sini bisa memberi feedback lebih baik
-                sql_check = "SELECT 1 FROM EnrollmentMurid WHERE id_murid = %s AND id_kelas = %s AND tahun_ajaran = %s"
-                cursor.execute(sql_check, (murid_id, kelas_id, tahun_ajaran))
-                if cursor.fetchone():
-                    print(f"Murid ID {murid_id} sudah terdaftar di Kelas ID {kelas_id} untuk tahun ajaran {tahun_ajaran}.")
-                    return False # Indikasi sudah ada / gagal
-
-                sql = """INSERT INTO EnrollmentMurid (id_murid, id_kelas, tahun_ajaran, status_enrollment)
-                         VALUES (%s, %s, %s, %s)"""
-                cursor.execute(sql, (murid_id, kelas_id, tahun_ajaran, status_enrollment))
-                conn.commit()
-                return True # Berhasil
-        except pymysql.MySQLError as e:
-            print(f"Error enrolling student {murid_id} to class {kelas_id}: {e}")
-            conn.rollback()
-            return False
-        finally:
-            conn.close()
-
-    def update_enrollment_status(self, murid_id, kelas_id, tahun_ajaran, new_status='dropout'):
-        # Atau bisa juga menggunakan enrollment_id jika itu lebih mudah didapat dari template
-        conn = self._get_connection()
-        try:
-            with conn.cursor() as cursor:
-                sql = """UPDATE EnrollmentMurid 
-                         SET status_enrollment = %s 
-                         WHERE id_murid = %s AND id_kelas = %s AND tahun_ajaran = %s"""
-                # Pastikan new_status adalah salah satu nilai ENUM yang valid
-                # ('aktif', 'lulus', 'pindah', 'dropout')
-                # Anda mungkin perlu menambahkan status baru ke DDL jika 'dropout' atau 'pindah' tidak cocok
-                cursor.execute(sql, (new_status, murid_id, kelas_id, tahun_ajaran))
-                conn.commit()
-                return cursor.rowcount > 0 # True jika ada baris yang terupdate
-        except pymysql.MySQLError as e:
-            print(f"Error updating enrollment status for murid {murid_id} in class {kelas_id}: {e}")
-            conn.rollback()
-            return False
-        finally:
-            conn.close()
-
     # --- Extracurricular Management ---
     def get_all_ekskul(self):
         conn = self._get_connection()
@@ -1008,11 +828,9 @@ class Config:
                         pnm.id_pengumuman, pnm.judul_pengumuman, pnm.isi_pengumuman, 
                         pnm.tanggal_publikasi, pnm.target_peran,
                         usr.nama_lengkap AS nama_pembuat,
-                        kls.nama_kelas AS nama_target_kelas,
                         eks.nama_ekskul AS nama_target_ekskul
                     FROM Pengumuman pnm
                     JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna
-                    LEFT JOIN Kelas kls ON pnm.target_kelas_id = kls.id_kelas
                     LEFT JOIN Ekstrakurikuler eks ON pnm.target_ekskul_id = eks.id_ekskul
                     ORDER BY pnm.tanggal_publikasi DESC
                 """
@@ -1034,14 +852,13 @@ class Config:
             with conn.cursor() as cursor:
                 sql = """INSERT INTO Pengumuman 
                          (judul_pengumuman, isi_pengumuman, id_pembuat, 
-                          target_ekskul_id, target_kelas_id, target_peran)
-                         VALUES (%s, %s, %s, %s, %s, %s)"""
+                          target_ekskul_id, target_peran)
+                         VALUES (%s, %s, %s, %s, %s)"""
                 cursor.execute(sql, (
                     data_pengumuman['judul_pengumuman'],
                     data_pengumuman['isi_pengumuman'],
                     data_pengumuman['id_pembuat'],
                     data_pengumuman.get('target_ekskul_id'), # Bisa None
-                    data_pengumuman.get('target_kelas_id'),  # Bisa None
                     data_pengumuman.get('target_peran')      # Bisa None
                 ))
                 conn.commit()
@@ -1064,7 +881,7 @@ class Config:
                     SELECT 
                         pnm.id_pengumuman, pnm.judul_pengumuman, pnm.isi_pengumuman,
                         pnm.id_pembuat, pnm.tanggal_publikasi, 
-                        pnm.target_ekskul_id, pnm.target_kelas_id, pnm.target_peran,
+                        pnm.target_ekskul_id, pnm.target_peran,
                         usr.nama_lengkap AS nama_pembuat
                     FROM Pengumuman pnm
                     JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna
@@ -1099,10 +916,6 @@ class Config:
                 target_peran = data_pengumuman.get('target_peran')
                 sql_parts.append("target_peran = %s")
                 params.append(target_peran if target_peran and target_peran != "" else None)
-                
-                target_kelas_id = data_pengumuman.get('target_kelas_id')
-                sql_parts.append("target_kelas_id = %s")
-                params.append(target_kelas_id if target_kelas_id else None) # Sudah int atau None dari app.py
 
                 target_ekskul_id = data_pengumuman.get('target_ekskul_id')
                 sql_parts.append("target_ekskul_id = %s")
@@ -1169,14 +982,11 @@ class Config:
     def get_counts(self):
         conn = self._get_connection()
         # Tambahkan 'materi_ekskul' ke dictionary counts
-        counts = {'users': 0, 'kelas': 0, 'ekskul': 0, 'pengumuman': 0, 'materi_ekskul': 0} 
+        counts = {'users': 0, 'ekskul': 0, 'pengumuman': 0, 'materi_ekskul': 0} 
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) as total FROM Pengguna")
                 counts['users'] = cursor.fetchone()['total']
-                
-                cursor.execute("SELECT COUNT(*) as total FROM Kelas")
-                counts['kelas'] = cursor.fetchone()['total']
                 
                 cursor.execute("SELECT COUNT(*) as total FROM Ekstrakurikuler")
                 counts['ekskul'] = cursor.fetchone()['total']

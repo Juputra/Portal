@@ -77,7 +77,7 @@
         
         <hr>
         <button type="submit" class="btn btn-primary">{{ action }} Materi</button>
-        <a href="{{ url_for('materi_ekskul_admin') }}" class="btn btn-secondary ms-2">Batal</a>
+        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#materi-content' }}" class="btn btn-secondary">Batal</a>
     </form>
 {% endblock %}
 

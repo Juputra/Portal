@@ -22,7 +22,7 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Detail Ekskul: {{ ekskul_info.nama_ekskul }}</h1>
-        <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Kembali ke Daftar Ekskul</a>
+        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#ekskul-content' }}" class="btn btn-secondary">Kembali ke Daftar Ekskul</a>
     </div>
 
     {# Menampilkan Flash Messages #}

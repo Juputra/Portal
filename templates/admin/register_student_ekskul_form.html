@@ -25,6 +25,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Daftarkan Murid</button>
-        <a href="{{ url_for('ekskul_admin') }}" class="btn btn-secondary">Batal</a>
+        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#ekskul-content' }}" class="btn btn-secondary">Batal</a>
     </form>
 {% endblock %}
