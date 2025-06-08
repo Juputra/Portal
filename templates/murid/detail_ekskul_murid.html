@@ -4,20 +4,18 @@
 
 {% block head_extra %}
 <style>
-    /* Styling spesifik untuk halaman detail ekskul */
-    /* Kartu Utama untuk Detail Ekskul */
     .detail-ekskul-info-card {
         background-color: var(--white, #ffffff);
         padding: 1.5rem 2rem;
-        border-radius: 12px; /* Sesuai dengan .container di layout */
-        box-shadow: 0 8px 16px rgba(0,0,0,0.05); /* Sesuai dengan .container di layout */
+        border-radius: 12px; 
+        box-shadow: 0 8px 16px rgba(0,0,0,0.05); 
         margin-bottom: 2.5rem;
     }
 
     .detail-ekskul-info-card .nama-ekskul-heading {
         color: var(--blue, #007bff);
         margin-top: 0;
-        margin-bottom: 1.25rem; /* Penyesuaian margin */
+        margin-bottom: 1.25rem; 
         font-size: 2rem;
         border-bottom: 3px solid var(--yellow, #ffd700);
         padding-bottom: 0.75rem;
@@ -41,11 +39,10 @@
         border: 1px solid #e0e0e0;
     }
     .detail-ekskul-info-card hr {
-        margin: 1.75rem 0; /* Jarak lebih tegas */
+        margin: 1.75rem 0; 
         border-top: 1px solid #e0e0e0;
     }
 
-    /* Badge untuk Status Ekskul di halaman ini */
     .status-badge-detail {
         padding: 0.4em 0.9em;
         font-size: 0.9rem;
@@ -57,16 +54,14 @@
     .status-badge-detail.aktif { background-color: #28a745; }
     .status-badge-detail.nonaktif { background-color: #dc3545; }
 
-    /* Section Materi (h2 akan mengikuti style global dari layout) */
     #materi-ekskul-section {
         margin-bottom: 2rem;
     }
 
-    /* Item Materi - Adaptasi dari .materi-item di layout atau dashboard */
     .materi-display-item {
         background: var(--white, #ffffff);
         border-left: 5px solid var(--blue, #007bff);
-        padding: 1.25rem 1.5rem; /* Padding disesuaikan */
+        padding: 1.25rem 1.5rem; 
         margin-bottom: 1.25rem;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -77,14 +72,14 @@
         color: var(--dark, #333);
         margin-bottom: 0.5rem;
     }
-    .materi-display-item .materi-meta-info { /* Untuk tipe konten */
+    .materi-display-item .materi-meta-info { 
         font-size: 0.8em;
         color: #555;
         margin-bottom: 0.75rem;
         background-color: var(--gray, #f4f4f4);
         padding: 2px 6px;
         border-radius: 4px;
-        display: inline-block; /* Agar background pas dengan teks */
+        display: inline-block;
     }
     .materi-display-item .materi-deskripsi {
         font-size: 0.9rem;
@@ -109,7 +104,6 @@
     .materi-display-item .btn-teks-materi { background-color: #6c757d; }
     .materi-display-item .btn-teks-materi:hover { background-color: #545b62; }
 
-    /* Video Embed & Teks Collapse (bergantung pada Bootstrap JS di layout) */
     .materi-display-item .embed-responsive { margin-top: 0.75rem; border-radius: 6px; overflow: hidden; position: relative; display: block; width: 100%; padding: 0;}
     .materi-display-item .embed-responsive::before { display: block; content: ""; }
     .materi-display-item .embed-responsive-16by9::before { padding-top: 56.25%; }
@@ -125,16 +119,15 @@
     .no-materi-info {
         background-color: var(--gray, #f4f4f4);
         padding: 1.5rem; text-align: center; border-radius: 8px;
-        color: #555; border: 1px dashed #ccc; /* Border lebih lembut */
+        color: #555; border: 1px dashed #ccc;
     }
 
-    /* Tombol Kembali di bagian paling bawah */
     .action-buttons-bottom { text-align: center; margin-top: 2.5rem; margin-bottom: 1rem; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container"> {# Menggunakan .container dari layout untuk padding dan max-width #}
+<div class="container"> 
     <section id="detail-ekskul-utama">
         <div class="detail-ekskul-info-card">
             <h2 class="nama-ekskul-heading">{{ ekskul.nama_ekskul }}</h2>
@@ -218,7 +211,7 @@
     </section>
 
      <div class="action-buttons-bottom">
-        <a href="{{ url_for('ekskul_saya_murid') }}" class="cta"> {# Menggunakan .cta dan .cta-secondary dari layout #}
+        <a href="{{ url_for('ekskul_saya_murid') }}" class="cta"> 
             <i class="fas fa-arrow-left"></i> Kembali ke Ekskul Saya
         </a>
     </div>

@@ -1,46 +1,173 @@
 {% extends "admin/layout_admin.html" %}
-{% block title %}Manajemen Materi Ekstrakurikuler{% endblock %}
-{% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Daftar Materi Ekstrakurikuler</h1>
-        <a href="{{ url_for('tambah_materi_ekskul_admin') }}" class="btn btn-primary">Tambah Materi Baru</a>
-    </div>
-    {% if list_materi %}
-    <div class="table-responsive">
-        <table class="table table-striped table-hover">
-            <thead>
-                <tr>
-                    <th>Judul Materi</th>
-                    <th>Ekskul</th>
-                    <th>Tipe Konten</th>
-                    <th>Pengunggah</th>
-                    <th>Tgl Unggah</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for materi in list_materi %}
-                <tr>
-                    <td>{{ materi.judul_materi }}</td>
-                    <td>{{ materi.nama_ekskul }}</td>
-                    <td>{{ materi.tipe_konten|capitalize }}</td>
-                    <td>{{ materi.nama_pengunggah }}</td>
-                    <td>{{ materi.tanggal_unggah.strftime('%d-%m-%Y %H:%M') if materi.tanggal_unggah else '-'}}</td>
-                    <td>
-                        {# Tombol Edit #}
-                        <a href="{{ url_for('edit_materi_ekskul_admin', id_materi_ekskul=materi.id_materi_ekskul) }}" class="btn btn-sm btn-outline-warning mb-1" title="Edit"><i class="fas fa-edit"></i> Edit</a>
 
-                        {# Form untuk tombol Hapus #}
-                        <form action="{{ url_for('hapus_materi_ekskul_admin', id_materi_ekskul=materi.id_materi_ekskul) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus materi \'{{ materi.judul_materi }}\'?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger mb-1" title="Hapus"><i class="fas fa-trash"></i> Hapus</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+{% block title %}Manajemen Materi Ekstrakurikuler{% endblock %}
+
+{% block head_extra %}
+<style>
+    .card {
+        background-color: var(--white);
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-top: 1rem;
+    }
+    .card-body {
+        padding: 0; 
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .page-title {
+        color: var(--dark);
+        font-size: 2.2rem;
+        font-weight: 600;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .table-custom th, .table-custom td {
+        padding: 1rem 1.25rem;
+        text-align: left;
+        border-bottom: 1px solid #e9ecef;
+        vertical-align: middle;
+        white-space: nowrap; 
+    }
+    .table-custom td:first-child, .table-custom th:first-child {
+        white-space: normal;
+    }
+    .table-custom thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+        border-bottom-width: 2px;
+    }
+    .table-custom tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .table-custom tbody tr:hover {
+        background-color: #f1f3f5;
+    }
+
+    .actions-group {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 0.3rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-primary { background-color: var(--blue); color: var(--white); }
+    .btn-primary:hover { background-color: #0056b3; }
+
+    .btn-warning { background-color: var(--yellow); color: var(--dark); }
+    .btn-warning:hover { background-color: #e0a800; }
+
+    .btn-danger { background-color: var(--danger); color: var(--white); }
+    .btn-danger:hover { background-color: #c82333; }
+
+    .content-type-badge {
+        display: inline-block;
+        padding: 0.3em 0.7em;
+        font-size: .8em;
+        font-weight: 600;
+        line-height: 1;
+        text-align: center;
+        border-radius: 1rem;
+        color: var(--white);
+    }
+    .type-file { background-color: #0d6efd; }
+    .type-link { background-color: #198754; }
+    .type-teks { background-color: #6c757d; } 
+    .type-video_embed { background-color: #dc3545; } 
+
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Materi Ekstrakurikuler</h1>
+    <a href="{{ url_for('tambah_materi_ekskul_admin') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Tambah Materi
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if list_materi %}
+        <div class="table-wrapper">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Judul Materi</th>
+                        <th>Ekskul</th>
+                        <th>Tipe Konten</th>
+                        <th>Pengunggah</th>
+                        <th>Tgl Unggah</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for materi in list_materi %}
+                    <tr>
+                        <td>{{ materi.judul_materi }}</td>
+                        <td>{{ materi.nama_ekskul }}</td>
+                        <td>
+                            <span class="content-type-badge type-{{ materi.tipe_konten.lower() }}">
+                                <i class="fas fa-{% if materi.tipe_konten == 'file' %}file-alt{% elif materi.tipe_konten == 'link' %}link{% elif materi.tipe_konten == 'teks' %}font{% elif materi.tipe_konten == 'video_embed' %}video{% else %}question{% endif %}"></i>
+                                {{ materi.tipe_konten | replace('_', ' ') | capitalize }}
+                            </span>
+                        </td>
+                        <td>{{ materi.nama_pengunggah }}</td>
+                        <td>{{ materi.tanggal_unggah.strftime('%d %b %Y, %H:%M') if materi.tanggal_unggah else '-'}}</td>
+                        <td>
+                            <div class="actions-group">
+                                <a href="{{ url_for('edit_materi_ekskul_admin', id_materi_ekskul=materi.id_materi_ekskul) }}" class="btn btn-warning" title="Edit Materi">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('hapus_materi_ekskul_admin', id_materi_ekskul=materi.id_materi_ekskul) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menghapus materi \'{{ materi.judul_materi }}\'?');">
+                                    <button type="submit" class="btn btn-danger" title="Hapus Materi">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>Belum ada materi ekstrakurikuler yang ditambahkan.</p>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <p class="text-center">Belum ada materi ekstrakurikuler.</p>
-    {% endif %}
+</div>
+
 {% endblock %}

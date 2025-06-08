@@ -1,5 +1,5 @@
 import pymysql
-from werkzeug.security import generate_password_hash # Diperlukan jika hashing dilakukan di sini
+from werkzeug.security import generate_password_hash 
 
 class Config:
     def __init__(self):
@@ -7,30 +7,25 @@ class Config:
         self.db_user = 'root'
         self.db_password = ''
         self.db_name = 'db_portal'
-        # self.mysql = pymysql.connect(...) # Anda sudah punya ini
-
-    # Helper method untuk mendapatkan koneksi baru
-    # Penting: Mengelola koneksi dengan baik (buka saat dibutuhkan, tutup setelah selesai)
-    # adalah kunci. Di aplikasi web, seringkali koneksi dibuat per request.
+ 
     def _get_connection(self):
         return pymysql.connect(
             host=self.db_host,
             user=self.db_user,
             password=self.db_password,
             database=self.db_name,
-            cursorclass=pymysql.cursors.DictCursor  # Hasil query sebagai dictionary
+            cursorclass=pymysql.cursors.DictCursor
         )
 
     def check_db_connection(self):
         try:
             conn = self._get_connection()
-            conn.ping(reconnect=True) # Coba ping server
+            conn.ping(reconnect=True)
             conn.close()
             return True
         except pymysql.MySQLError:
             return False
 
-    # --- User Management ---
     def get_user_by_username(self, username):
         conn = self._get_connection()
         user = None
@@ -59,19 +54,46 @@ class Config:
             conn.close()
         return user
 
+    def get_user_by_email(self, email_user):
+        conn = self._get_connection()
+        user = None
+        try:
+            with conn.cursor() as cursor:
+                sql = "SELECT * FROM Pengguna WHERE email = %s"
+                cursor.execute(sql, (email_user,))
+                user = cursor.fetchone()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching user by id: {e}")
+        finally:
+            conn.close()
+        return user
+
+    def get_user_by_nomor_induk(self, nomor_induk, peran):
+        conn = self._get_connection()
+        user = None
+        try:
+            with conn.cursor() as cursor:
+                sql = "SELECT * FROM Pengguna WHERE nomor_induk = %s AND peran = %s"
+                cursor.execute(sql, (nomor_induk, peran))
+                user = cursor.fetchone()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching user by nomor induk dan peran: {e}")
+        finally:
+            conn.close()
+        return user
+
     def get_users_by_role(self, peran):
         conn = self._get_connection()
         users = []
         try:
             with conn.cursor() as cursor:
-                # Query ini mengambil semua kolom dari tabel Pengguna
                 sql = "SELECT * FROM Pengguna WHERE peran = %s ORDER BY nama_lengkap"
                 cursor.execute(sql, (peran,))
                 users = cursor.fetchall()
         except pymysql.MySQLError as e:
             print(f"Error in get_users_by_role for role '{peran}': {e}")
         finally:
-            if conn.open: conn.close() # Pastikan koneksi ditutup
+            if conn.open: conn.close()
         return users
     
     def get_all_users(self):
@@ -79,7 +101,6 @@ class Config:
         users = []
         try:
             with conn.cursor() as cursor:
-                # Mengurutkan berdasarkan peran lalu nama untuk tampilan yang lebih baik
                 sql = "SELECT * FROM Pengguna ORDER BY FIELD(peran, 'admin', 'guru', 'murid'), nama_lengkap"
                 cursor.execute(sql)
                 users = cursor.fetchall()
@@ -90,12 +111,10 @@ class Config:
         return users
 
     def add_user(self, user_data):
-        # user_data adalah dictionary {'username': '...', 'password': '...', ...}
         conn = self._get_connection()
         new_user_id = None
         try:
             with conn.cursor() as cursor:
-                # Hash password sebelum disimpan
                 hashed_password = generate_password_hash(user_data['password'])
                 sql = """INSERT INTO Pengguna 
                          (username, password_hash, nama_lengkap, email, peran, nomor_induk, status_aktif) 
@@ -106,14 +125,14 @@ class Config:
                     user_data['nama_lengkap'],
                     user_data['email'],
                     user_data['peran'],
-                    user_data.get('nomor_induk'), # .get() untuk field opsional
+                    user_data.get('nomor_induk'), 
                     user_data.get('status_aktif', True)
                 ))
                 conn.commit()
-                new_user_id = cursor.lastrowid # Mendapatkan ID dari user yang baru saja di-insert
+                new_user_id = cursor.lastrowid 
         except pymysql.MySQLError as e:
             print(f"Error adding user: {e}")
-            conn.rollback() # Penting untuk rollback jika terjadi error
+            conn.rollback()
         finally:
             conn.close()
         return new_user_id
@@ -122,10 +141,8 @@ class Config:
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
-                # Siapkan query dasar
                 sql_parts = []
                 params = []
-                
                 if 'username' in user_data and user_data['username']:
                     sql_parts.append("username = %s")
                     params.append(user_data['username'])
@@ -138,28 +155,23 @@ class Config:
                 if 'peran' in user_data and user_data['peran']:
                     sql_parts.append("peran = %s")
                     params.append(user_data['peran'])
-                if 'nomor_induk' in user_data: # Bisa jadi string kosong atau None
+                if 'nomor_induk' in user_data:
                     sql_parts.append("nomor_induk = %s")
                     params.append(user_data['nomor_induk'])
-                if 'status_aktif' in user_data: # Ini boolean
+                if 'status_aktif' in user_data:
                     sql_parts.append("status_aktif = %s")
                     params.append(bool(user_data['status_aktif']))
-
-                # Update password jika diberikan dan tidak kosong
                 if 'password' in user_data and user_data['password']:
                     hashed_password = generate_password_hash(user_data['password'])
                     sql_parts.append("password_hash = %s")
                     params.append(hashed_password)
-                
-                if not sql_parts: # Tidak ada yang diupdate
+                if not sql_parts: 
                     return True 
-
                 sql = f"UPDATE Pengguna SET {', '.join(sql_parts)} WHERE id_pengguna = %s"
                 params.append(user_id)
-                
                 cursor.execute(sql, tuple(params))
                 conn.commit()
-                return True # Berhasil
+                return True 
         except pymysql.MySQLError as e:
             print(f"Error updating user {user_id}: {e}")
             conn.rollback()
@@ -171,12 +183,10 @@ class Config:
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
-                # Periksa dulu apakah user ini adalah satu-satunya admin, jika ya, mungkin jangan dihapus
-                # (Logika ini bisa ditambahkan jika perlu)
                 sql = "DELETE FROM Pengguna WHERE id_pengguna = %s"
                 cursor.execute(sql, (user_id,))
                 conn.commit()
-                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+                return cursor.rowcount > 0
         except pymysql.MySQLError as e:
             print(f"Error deleting user {user_id}: {e}")
             conn.rollback()
@@ -193,7 +203,7 @@ class Config:
                 admin_exists = cursor.fetchone()
                 
                 if not admin_exists:
-                    print("Tidak ada admin ditemukan. Membuat admin default...")
+                    print("Tidak ada admin ditemukan. Membuat admin default.")
                     default_admin_data = {
                         'username': 'admin', 'password': 'adminpassword', 
                         'nama_lengkap': 'Administrator Utama', 'email': 'admin@example.com',
@@ -208,17 +218,15 @@ class Config:
         finally:
             if conn.open: conn.close()
 
-    # --- Extracurricular Management ---
     def get_all_ekskul(self):
         conn = self._get_connection()
         ekskul_list = []
         try:
             with conn.cursor() as cursor:
-                # Query diubah untuk ORDER BY kategori, lalu nama_ekskul
                 sql = """SELECT e.*, p.nama_lengkap AS nama_guru_pembina 
                          FROM Ekstrakurikuler e
                          LEFT JOIN Pengguna p ON e.id_guru_pembina = p.id_pengguna
-                         ORDER BY e.kategori, e.nama_ekskul""" # PENTING: ORDER BY kategori
+                         ORDER BY e.kategori, e.nama_ekskul""" 
                 cursor.execute(sql)
                 ekskul_list = cursor.fetchall()
         except pymysql.MySQLError as e:
@@ -234,11 +242,11 @@ class Config:
             with conn.cursor() as cursor:
                 sql = """INSERT INTO Ekstrakurikuler 
                             (nama_ekskul, deskripsi, kategori, id_guru_pembina, jadwal_deskripsi, lokasi, kuota_maksimal, status_aktif, url_logo_ekskul)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""" # Tambahkan 'kategori' di sini
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
                 cursor.execute(sql, (
                     ekskul_data['nama_ekskul'],
                     ekskul_data.get('deskripsi'),
-                    ekskul_data.get('kategori'), # Ambil nilai kategori
+                    ekskul_data.get('kategori'), 
                     ekskul_data.get('id_guru_pembina'),
                     ekskul_data.get('jadwal_deskripsi'),
                     ekskul_data.get('lokasi'),
@@ -260,7 +268,6 @@ class Config:
         ekskul_info = None
         try:
             with conn.cursor() as cursor:
-                # Mengambil detail ekskul termasuk nama guru pembina
                 sql = """SELECT e.*, p.nama_lengkap AS nama_guru_pembina
                          FROM Ekstrakurikuler e
                          LEFT JOIN Pengguna p ON e.id_guru_pembina = p.id_pengguna
@@ -279,74 +286,55 @@ class Config:
             with conn.cursor() as cursor:
                 sql_parts = []
                 params = []
-
-                # Tambahkan pengecekan untuk setiap field yang mungkin diupdate
                 if 'nama_ekskul' in ekskul_data:
                     sql_parts.append("nama_ekskul = %s")
                     params.append(ekskul_data['nama_ekskul'])
-                if 'deskripsi' in ekskul_data: # Boleh None atau string kosong
+                if 'deskripsi' in ekskul_data: 
                     sql_parts.append("deskripsi = %s")
                     params.append(ekskul_data.get('deskripsi'))
                 if 'kategori' in ekskul_data:
                     sql_parts.append("kategori = %s")
                     params.append(ekskul_data.get('kategori'))
-                if 'id_guru_pembina' in ekskul_data: # Boleh None
+                if 'id_guru_pembina' in ekskul_data: 
                     sql_parts.append("id_guru_pembina = %s")
                     params.append(ekskul_data.get('id_guru_pembina'))
-                if 'jadwal_deskripsi' in ekskul_data: # Tambahkan ini
+                if 'jadwal_deskripsi' in ekskul_data: 
                     sql_parts.append("jadwal_deskripsi = %s")
                     params.append(ekskul_data.get('jadwal_deskripsi'))
-                if 'lokasi' in ekskul_data: # Tambahkan ini
+                if 'lokasi' in ekskul_data: 
                     sql_parts.append("lokasi = %s")
                     params.append(ekskul_data.get('lokasi'))
-                if 'kuota_maksimal' in ekskul_data: # Boleh None
+                if 'kuota_maksimal' in ekskul_data: 
                     sql_parts.append("kuota_maksimal = %s")
                     params.append(ekskul_data.get('kuota_maksimal'))
-                if 'status_aktif' in ekskul_data: # Ini boolean
+                if 'status_aktif' in ekskul_data: 
                     sql_parts.append("status_aktif = %s")
                     params.append(bool(ekskul_data['status_aktif']))
-                
-                # --- INI BAGIAN PENTING UNTUK LOGO ---
                 if 'url_logo_ekskul' in ekskul_data:
                     sql_parts.append("url_logo_ekskul = %s")
-                    # Nilai bisa berupa nama file (string) atau None (jika logo dihapus)
                     params.append(ekskul_data.get('url_logo_ekskul')) 
-                # --- AKHIR BAGIAN PENTING UNTUK LOGO ---
-
                 if not sql_parts:
-                    # Tidak ada field yang dikirim untuk diupdate, anggap sukses (tidak ada perubahan)
                     return True 
-
                 sql = f"UPDATE Ekstrakurikuler SET {', '.join(sql_parts)}, updated_at = NOW() WHERE id_ekskul = %s"
                 params.append(ekskul_id)
-                
-                # Debugging tambahan di config.py jika perlu:
-                # print(f"DEBUG SQL Update Ekskul: {sql}")
-                # print(f"DEBUG Params Update Ekskul: {tuple(params)}")
-
                 cursor.execute(sql, tuple(params))
                 conn.commit()
-                return cursor.rowcount > 0 # Return True jika ada baris yang terupdate
+                return cursor.rowcount > 0 
         except pymysql.MySQLError as e:
             print(f"Error updating ekstrakurikuler {ekskul_id}: {e}")
             conn.rollback()
             return False
         finally:
-            if conn.open: conn.close() # Pastikan koneksi ditutup
+            if conn.open: conn.close()
 
     def delete_ekskul(self, ekskul_id):
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
-                # Menghapus ekstrakurikuler.
-                # Karena ada ON DELETE CASCADE pada PendaftaranEkskul(id_ekskul)
-                # dan MateriEkskul(id_ekskul) di DDL kita,
-                # maka pendaftaran dan materi terkait akan otomatis terhapus.
                 sql = "DELETE FROM Ekstrakurikuler WHERE id_ekskul = %s"
                 cursor.execute(sql, (ekskul_id,))
                 conn.commit()
-                # cursor.rowcount akan mengembalikan jumlah baris yang terpengaruh (terhapus)
-                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+                return cursor.rowcount > 0
         except pymysql.MySQLError as e:
             print(f"Error deleting ekstrakurikuler {ekskul_id}: {e}")
             conn.rollback()
@@ -355,16 +343,25 @@ class Config:
             conn.close()
 
     def get_ekskul_by_pembina(self, id_guru_pembina):
-        """Mengambil semua ekstrakurikuler yang dibina oleh guru tertentu."""
         conn = self._get_connection()
         ekskul_list = []
+        tahun_ajaran_aktif = self.get_tahun_ajaran_aktif() 
         try:
             with conn.cursor() as cursor:
-                sql = """SELECT id_ekskul, nama_ekskul, jadwal_deskripsi, lokasi 
-                         FROM Ekstrakurikuler 
-                         WHERE id_guru_pembina = %s AND status_aktif = TRUE
-                         ORDER BY nama_ekskul"""
-                cursor.execute(sql, (id_guru_pembina,))
+                sql = """SELECT 
+                            e.id_ekskul, 
+                            e.nama_ekskul, 
+                            e.jadwal_deskripsi, 
+                            e.lokasi,
+                            (SELECT COUNT(*) 
+                             FROM PendaftaranEkskul pe 
+                             WHERE pe.id_ekskul = e.id_ekskul 
+                               AND pe.tahun_ajaran = %s 
+                               AND pe.status_pendaftaran IN ('Disetujui', 'Terdaftar')) AS jumlah_peserta
+                        FROM Ekstrakurikuler e
+                        WHERE e.id_guru_pembina = %s AND e.status_aktif = TRUE
+                        ORDER BY e.nama_ekskul"""
+                cursor.execute(sql, (tahun_ajaran_aktif, id_guru_pembina))
                 ekskul_list = cursor.fetchall()
         except pymysql.MySQLError as e:
             print(f"Error fetching ekskul by pembina {id_guru_pembina}: {e}")
@@ -372,9 +369,7 @@ class Config:
             conn.close()
         return ekskul_list
 
-    # --- Extracurricular Registration Management ---
     def get_all_active_murid_exclude_ekskul(self, ekskul_id_to_check, tahun_ajaran_aktif):
-        # Mengambil murid aktif yang belum terdaftar di ekskul_id_to_check pada tahun_ajaran_aktif
         conn = self._get_connection()
         murid_list = []
         try:
@@ -401,38 +396,32 @@ class Config:
 
     def register_student_for_ekskul(self, murid_id, ekskul_id, tahun_ajaran, 
                                     status_pendaftaran='Disetujui', 
-                                    catatan_pendaftar="Didaftarkan oleh sistem"): # Ganti catatan_admin menjadi lebih umum
+                                    catatan_pendaftar="Didaftarkan oleh sistem"):
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
-                # Langkah 1: Dapatkan informasi kuota ekskul
                 sql_get_ekskul_info = "SELECT kuota_maksimal, nama_ekskul FROM Ekstrakurikuler WHERE id_ekskul = %s"
                 cursor.execute(sql_get_ekskul_info, (ekskul_id,))
                 ekskul_info = cursor.fetchone()
-
                 if not ekskul_info:
                     print(f"Ekskul ID {ekskul_id} tidak ditemukan.")
                     return "EKSKUL_NOT_FOUND" 
 
                 kuota = ekskul_info.get('kuota_maksimal')
                 nama_ekskul = ekskul_info.get('nama_ekskul')
-
-                # Langkah 2: Cek kuota jika ada (tidak NULL dan > 0)
                 if kuota is not None and kuota > 0:
                     sql_count_participants = """
                         SELECT COUNT(*) as jumlah_peserta 
                         FROM PendaftaranEkskul 
                         WHERE id_ekskul = %s AND tahun_ajaran = %s 
                         AND status_pendaftaran IN ('Disetujui', 'Terdaftar') 
-                    """ # Hanya hitung yang statusnya aktif/disetujui
+                    """ 
                     cursor.execute(sql_count_participants, (ekskul_id, tahun_ajaran))
                     jumlah_peserta_aktif = cursor.fetchone()['jumlah_peserta']
-
                     if jumlah_peserta_aktif >= kuota:
                         print(f"Kuota untuk Ekskul '{nama_ekskul}' (ID: {ekskul_id}) sudah penuh ({jumlah_peserta_aktif}/{kuota}).")
-                        return "KUOTA_PENUH" # Kembalikan status spesifik
-
-                # Langkah 3: Cek apakah murid sudah terdaftar (mencegah duplikasi)
+                        return "KUOTA_PENUH" 
+                    
                 sql_check_duplikasi = """SELECT id_pendaftaran_ekskul, status_pendaftaran 
                                          FROM PendaftaranEkskul 
                                          WHERE id_murid = %s AND id_ekskul = %s AND tahun_ajaran = %s"""
@@ -440,22 +429,19 @@ class Config:
                 pendaftaran_lama = cursor.fetchone()
                 
                 if pendaftaran_lama:
-                    # Jika sudah ada dan statusnya 'Berhenti' atau 'Ditolak', mungkin bisa diupdate/didaftarkan ulang
-                    # Untuk saat ini, kita anggap tidak bisa jika sudah ada record apapun
                     print(f"Murid ID {murid_id} sudah memiliki record pendaftaran di Ekskul '{nama_ekskul}' untuk tahun {tahun_ajaran} dengan status {pendaftaran_lama['status_pendaftaran']}.")
                     return "SUDAH_TERDAFTAR"
-
-                # Langkah 4: Jika semua pengecekan lolos, lakukan INSERT
+                
                 sql_insert = """INSERT INTO PendaftaranEkskul 
                                 (id_murid, id_ekskul, tahun_ajaran, status_pendaftaran, catatan_admin_pembina)
                                 VALUES (%s, %s, %s, %s, %s)"""
                 cursor.execute(sql_insert, (murid_id, ekskul_id, tahun_ajaran, status_pendaftaran, catatan_pendaftar))
                 conn.commit()
-                return cursor.lastrowid # Mengembalikan ID pendaftaran baru jika berhasil
+                return cursor.lastrowid
         except pymysql.MySQLError as e:
             print(f"Error in register_student_for_ekskul (murid:{murid_id}, ekskul:{ekskul_id}): {e}")
             conn.rollback()
-            return False # Indikasi error umum
+            return False
         finally:
             if conn.open: conn.close()
 
@@ -464,7 +450,6 @@ class Config:
       members = []
       try:
           with conn.cursor() as cursor:
-              # Mengambil murid yang status pendaftarannya 'Disetujui' atau 'Terdaftar'
               sql = """SELECT p.id_pengguna, p.nama_lengkap, p.nomor_induk, p.email, pe.status_pendaftaran, pe.id_pendaftaran_ekskul
                       FROM Pengguna p
                       JOIN PendaftaranEkskul pe ON p.id_pengguna = pe.id_murid
@@ -481,7 +466,6 @@ class Config:
       return members
 
     def get_pendaftaran_ekskul_id(self, murid_id, ekskul_id, tahun_ajaran):
-        """Mencari id_pendaftaran_ekskul berdasarkan murid, ekskul, dan tahun ajaran."""
         conn = self._get_connection()
         pendaftaran_id = None
         try:
@@ -490,7 +474,7 @@ class Config:
                          FROM PendaftaranEkskul
                          WHERE id_murid = %s AND id_ekskul = %s AND tahun_ajaran = %s
                          AND status_pendaftaran IN ('Disetujui', 'Terdaftar') 
-                         LIMIT 1""" # Asumsi hanya ada satu pendaftaran aktif per ekskul per tahun
+                         LIMIT 1""" 
                 cursor.execute(sql, (murid_id, ekskul_id, tahun_ajaran))
                 result = cursor.fetchone()
                 if result:
@@ -502,15 +486,12 @@ class Config:
         return pendaftaran_id
 
     def update_ekskul_registration_status(self, pendaftaran_id, new_status='Berhenti', catatan_admin="Dikeluarkan oleh Admin"):
-        # Menggunakan pendaftaran_id untuk target yang lebih spesifik
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
                 sql = """UPDATE PendaftaranEkskul 
                          SET status_pendaftaran = %s, catatan_admin_pembina = %s
                          WHERE id_pendaftaran_ekskul = %s"""
-                # Pastikan new_status adalah ENUM valid
-                # ('Terdaftar', 'Menunggu Persetujuan', 'Disetujui', 'Ditolak', 'Berhenti')
                 cursor.execute(sql, (new_status, catatan_admin, pendaftaran_id))
                 conn.commit()
                 return cursor.rowcount > 0
@@ -522,9 +503,6 @@ class Config:
             conn.close()
 
     def add_materi_ekskul(self, data_materi):
-        # data_materi: {'id_ekskul': ..., 'judul_materi': ..., 'deskripsi_materi': ..., 
-        #               'tipe_konten': ..., 'path_konten_atau_link': ..., 
-        #               'isi_konten_teks': ..., 'id_pengunggah': ...}
         conn = self._get_connection()
         new_id = None
         try:
@@ -538,8 +516,8 @@ class Config:
                     data_materi['judul_materi'],
                     data_materi.get('deskripsi_materi'),
                     data_materi['tipe_konten'],
-                    data_materi.get('path_konten_atau_link'), # Akan berisi path file, URL, atau kode embed
-                    data_materi.get('isi_konten_teks'),      # Untuk tipe 'teks'
+                    data_materi.get('path_konten_atau_link'),
+                    data_materi.get('isi_konten_teks'),
                     data_materi['id_pengunggah']
                 ))
                 conn.commit()
@@ -552,7 +530,6 @@ class Config:
         return new_id
 
     def get_all_materi_ekskul(self):
-        # Mengambil semua materi, join dengan nama ekskul dan nama pengunggah
         conn = self._get_connection()
         materi_list = []
         try:
@@ -599,40 +576,33 @@ class Config:
             with conn.cursor() as cursor:
                 sql_parts = []
                 params = []
-
-                # Selalu update field dasar jika ada di data_materi
                 if 'id_ekskul' in data_materi: 
                     sql_parts.append("id_ekskul = %s")
                     params.append(data_materi['id_ekskul'])
                 if 'judul_materi' in data_materi: 
                     sql_parts.append("judul_materi = %s")
                     params.append(data_materi['judul_materi'])
-                if 'deskripsi_materi' in data_materi: # deskripsi bisa string kosong
+                if 'deskripsi_materi' in data_materi: 
                     sql_parts.append("deskripsi_materi = %s")
                     params.append(data_materi['deskripsi_materi'])
-                
-                # Update tipe_konten jika berubah
                 if 'tipe_konten' in data_materi:
                     current_tipe_konten = data_materi['tipe_konten']
                     sql_parts.append("tipe_konten = %s")
                     params.append(current_tipe_konten)
 
                     if current_tipe_konten in ['file', 'link', 'video_embed']:
-                        # Jika path_konten_atau_link ada di data_materi (artinya ada file baru atau link baru)
-                        # atau jika memang field ini dikirim kosong untuk mengosongkan
                         if 'path_konten_atau_link' in data_materi:
                             sql_parts.append("path_konten_atau_link = %s")
                             params.append(data_materi.get('path_konten_atau_link'))
-                        sql_parts.append("isi_konten_teks = %s") # Selalu set pasangannya jadi NULL
+                        sql_parts.append("isi_konten_teks = %s")
                         params.append(None)
                     elif current_tipe_konten == 'teks':
                         if 'isi_konten_teks' in data_materi:
                             sql_parts.append("isi_konten_teks = %s")
                             params.append(data_materi.get('isi_konten_teks'))
-                        sql_parts.append("path_konten_atau_link = %s") # Selalu set pasangannya jadi NULL
+                        sql_parts.append("path_konten_atau_link = %s")
                         params.append(None)
                 else:
-                    # Tipe konten tidak diubah, hanya update path atau teks jika ada
                     if 'path_konten_atau_link' in data_materi:
                         sql_parts.append("path_konten_atau_link = %s")
                         params.append(data_materi.get('path_konten_atau_link'))
@@ -640,10 +610,9 @@ class Config:
                         sql_parts.append("isi_konten_teks = %s")
                         params.append(data_materi.get('isi_konten_teks'))
 
-
                 if not sql_parts:
                     print("Tidak ada data valid untuk diupdate pada materi ekskul.")
-                    return True # Anggap sukses jika tidak ada yang diubah
+                    return True 
 
                 sql_parts.append("updated_at = NOW()")
                 
@@ -652,8 +621,7 @@ class Config:
 
                 if sql_query.count('%s') != len(params):
                     print("ERROR KRITIS: Jumlah placeholder %s tidak cocok dengan jumlah parameter!")
-                    # Jangan eksekusi query jika tidak cocok
-                    conn.rollback() # Pastikan tidak ada perubahan parsial
+                    conn.rollback() 
                     return False
 
                 cursor.execute(sql_query, tuple(params))
@@ -670,14 +638,11 @@ class Config:
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
-                # Ambil detail materi dulu jika perlu menghapus file fisik
                 cursor.execute("SELECT tipe_konten, path_konten_atau_link FROM MateriEkskul WHERE id_materi_ekskul = %s", (id_materi_ekskul,))
                 materi_info = cursor.fetchone()
-
                 sql_delete = "DELETE FROM MateriEkskul WHERE id_materi_ekskul = %s"
                 cursor.execute(sql_delete, (id_materi_ekskul,))
                 conn.commit()
-                # Kembalikan info file jika ada, agar bisa dihapus di app.py
                 return materi_info 
         except pymysql.MySQLError as e:
             print(f"Error in delete_materi_ekskul: {e}")
@@ -691,7 +656,6 @@ class Config:
         materi_list = []
         try:
             with conn.cursor() as cursor:
-                # Join dengan tabel Pengguna untuk mendapatkan nama pengunggah
                 sql = """
                     SELECT 
                         me.id_materi_ekskul, 
@@ -716,14 +680,10 @@ class Config:
             if conn.open: conn.close()
         return materi_list
 
-    # --- Attendance Management ---
     def save_absensi_ekskul(self, id_pendaftaran_ekskul, tanggal_kegiatan, status_kehadiran, dicatat_oleh_id, catatan=None, jam_kegiatan=None):
-        """Menyimpan atau mengupdate data absensi."""
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
-                # Menggunakan klausa ON DUPLICATE KEY UPDATE jika sudah ada absensi untuk tanggal tersebut
-                # Ini memerlukan UNIQUE KEY pada (id_pendaftaran_ekskul, tanggal_kegiatan) di tabel AbsensiEkskul
                 sql = """INSERT INTO AbsensiEkskul 
                             (id_pendaftaran_ekskul, tanggal_kegiatan, status_kehadiran, dicatat_oleh_id, catatan, jam_mulai_kegiatan)
                          VALUES (%s, %s, %s, %s, %s, %s) 
@@ -739,7 +699,7 @@ class Config:
                     status_kehadiran,
                     dicatat_oleh_id,
                     catatan,
-                    jam_kegiatan # Bisa NULL jika tidak diisi
+                    jam_kegiatan 
                 ))
                 conn.commit()
                 return True
@@ -750,8 +710,117 @@ class Config:
         finally:
             if conn.open: conn.close()
     
+    def get_absensi_by_guru(self, guru_id, filters={}):
+        """
+        Mengambil daftar absensi yang dicatat oleh seorang guru, dengan opsi filter.
+        """
+        conn = self._get_connection()
+        absensi_list = []
+        try:
+            with conn.cursor() as cursor:
+                sql = """
+                    SELECT 
+                        ae.id_absensi_ekskul,
+                        ae.tanggal_kegiatan,
+                        ae.jam_mulai_kegiatan,
+                        ae.status_kehadiran,
+                        ae.catatan,
+                        p_murid.nama_lengkap AS nama_murid,
+                        e.nama_ekskul,
+                        ae.dicatat_oleh_id
+                    FROM AbsensiEkskul ae
+                    JOIN PendaftaranEkskul pe ON ae.id_pendaftaran_ekskul = pe.id_pendaftaran_ekskul
+                    JOIN Pengguna p_murid ON pe.id_murid = p_murid.id_pengguna
+                    JOIN Ekstrakurikuler e ON pe.id_ekskul = e.id_ekskul
+                    WHERE ae.dicatat_oleh_id = %s
+                """
+                params = [guru_id]
+
+                if filters.get('start_date'):
+                    sql += " AND ae.tanggal_kegiatan >= %s"
+                    params.append(filters['start_date'])
+                if filters.get('end_date'):
+                    sql += " AND ae.tanggal_kegiatan <= %s"
+                    params.append(filters['end_date'])
+                if filters.get('id_ekskul'):
+                    sql += " AND e.id_ekskul = %s"
+                    params.append(filters['id_ekskul'])
+                if filters.get('id_murid'):
+                    sql += " AND p_murid.id_pengguna = %s"
+                    params.append(filters['id_murid'])
+                if filters.get('status_kehadiran'):
+                    sql += " AND ae.status_kehadiran = %s"
+                    params.append(filters['status_kehadiran'])
+                
+                sql += " ORDER BY ae.tanggal_kegiatan DESC, e.nama_ekskul, p_murid.nama_lengkap"
+                
+                cursor.execute(sql, tuple(params))
+                absensi_list = cursor.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching absensi by guru {guru_id}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return absensi_list
+
+    def get_absensi_by_id(self, id_absensi):
+        """
+        Mengambil satu data absensi berdasarkan ID primernya.
+        """
+        conn = self._get_connection()
+        absensi_info = None
+        try:
+            with conn.cursor() as cursor:
+                sql = "SELECT *, dicatat_oleh_id as id_guru_pencatat FROM AbsensiEkskul WHERE id_absensi_ekskul = %s"
+                cursor.execute(sql, (id_absensi,))
+                absensi_info = cursor.fetchone()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching absensi by ID {id_absensi}: {e}")
+        finally:
+            if conn.open: conn.close()
+        return absensi_info
+
+    def update_absensi(self, id_absensi, data_update):
+        """
+        Memperbarui data absensi yang sudah ada.
+        """
+        conn = self._get_connection()
+        try:
+            with conn.cursor() as cursor:
+                sql_parts = []
+                params = []
+                
+                if 'tanggal_kegiatan' in data_update and data_update['tanggal_kegiatan']:
+                    sql_parts.append("tanggal_kegiatan = %s")
+                    params.append(data_update['tanggal_kegiatan'])
+                if 'status_kehadiran' in data_update and data_update['status_kehadiran']:
+                    sql_parts.append("status_kehadiran = %s")
+                    params.append(data_update['status_kehadiran'])
+                if 'jam_kegiatan' in data_update:
+                    sql_parts.append("jam_mulai_kegiatan = %s")
+                    params.append(data_update['jam_kegiatan'])
+                if 'catatan' in data_update:
+                    sql_parts.append("catatan = %s")
+                    params.append(data_update['catatan'])
+
+                if not sql_parts:
+                    return True 
+
+                sql_parts.append("updated_at = NOW()")
+                
+                sql = f"UPDATE AbsensiEkskul SET {', '.join(sql_parts)} WHERE id_absensi_ekskul = %s"
+                params.append(id_absensi)
+                
+                cursor.execute(sql, tuple(params))
+                conn.commit()
+                return cursor.rowcount > 0
+        except pymysql.MySQLError as e:
+            print(f"Error updating absensi {id_absensi}: {e}")
+            conn.rollback()
+            return False
+        finally:
+            if conn.open: conn.close()
+
     def get_all_absensi_ekskul_detailed(self, tahun_ajaran_filter=None, ekskul_id_filter=None, murid_id_filter=None, date_filter=None):
-        """Mengambil semua data absensi dengan detail nama murid, ekskul, dan pencatat."""
         conn = self._get_connection()
         absensi_list = []
         try:
@@ -767,7 +836,7 @@ class Config:
                         a.catatan,
                         p_pencatat.nama_lengkap AS nama_pencatat,
                         a.tanggal_dicatat,
-                        pe.id_pendaftaran_ekskul, # Untuk link edit
+                        pe.id_pendaftaran_ekskul,
                         pe.tahun_ajaran
                     FROM AbsensiEkskul a
                     JOIN PendaftaranEkskul pe ON a.id_pendaftaran_ekskul = pe.id_pendaftaran_ekskul
@@ -801,7 +870,6 @@ class Config:
         return absensi_list
 
     def get_absensi_entry_for_edit(self, id_pendaftaran_ekskul, tanggal_kegiatan):
-        """Mengambil satu entri absensi untuk di-edit, berdasarkan pendaftaran dan tanggal."""
         conn = self._get_connection()
         absensi_entry = None
         try:
@@ -823,14 +891,13 @@ class Config:
         return absensi_entry
         
     def delete_absensi_ekskul(self, id_absensi_ekskul):
-        """Menghapus satu entri absensi berdasarkan ID uniknya."""
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
                 sql = "DELETE FROM AbsensiEkskul WHERE id_absensi_ekskul = %s"
                 cursor.execute(sql, (id_absensi_ekskul,))
                 conn.commit()
-                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+                return cursor.rowcount > 0 
         except pymysql.MySQLError as e:
             print(f"Error in delete_absensi_ekskul for ID {id_absensi_ekskul}: {e}")
             conn.rollback()
@@ -838,10 +905,7 @@ class Config:
         finally:
             if conn.open: conn.close()
 
-    # --- Announcement Management ---
     def get_all_pengumuman(self):
-        # Mengambil semua pengumuman, mungkin diurutkan berdasarkan tanggal terbaru
-        # dan join dengan nama pembuat, nama kelas, nama ekskul untuk tampilan
         conn = self._get_connection()
         pengumuman_list = []
         try:
@@ -866,9 +930,6 @@ class Config:
         return pengumuman_list
     
     def add_pengumuman(self, data_pengumuman):
-        # data_pengumuman adalah dictionary: 
-        # {'judul_pengumuman': '...', 'isi_pengumuman': '...', 'id_pembuat': ..., 
-        #  'target_ekskul_id': ..., 'target_kelas_id': ..., 'target_peran': ...}
         conn = self._get_connection()
         new_id = None
         try:
@@ -881,8 +942,8 @@ class Config:
                     data_pengumuman['judul_pengumuman'],
                     data_pengumuman['isi_pengumuman'],
                     data_pengumuman['id_pembuat'],
-                    data_pengumuman.get('target_ekskul_id'), # Bisa None
-                    data_pengumuman.get('target_peran')      # Bisa None
+                    data_pengumuman.get('target_ekskul_id'),
+                    data_pengumuman.get('target_peran')
                 ))
                 conn.commit()
                 new_id = cursor.lastrowid
@@ -898,8 +959,6 @@ class Config:
         pengumuman = None
         try:
             with conn.cursor() as cursor:
-                # Mengambil detail pengumuman termasuk data target jika ada
-                # dan nama pembuat
                 sql = """
                     SELECT 
                         pnm.id_pengumuman, pnm.judul_pengumuman, pnm.isi_pengumuman,
@@ -919,39 +978,28 @@ class Config:
         return pengumuman
 
     def update_pengumuman(self, id_pengumuman, data_pengumuman):
-        # data_pengumuman: {'judul_pengumuman': ..., 'isi_pengumuman': ..., 
-        #                  'target_ekskul_id': ..., 'target_kelas_id': ..., 'target_peran': ...}
-        # id_pembuat dan tanggal_publikasi biasanya tidak diubah saat edit.
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
                 sql_parts = []
                 params = []
-
                 if 'judul_pengumuman' in data_pengumuman:
                     sql_parts.append("judul_pengumuman = %s")
                     params.append(data_pengumuman['judul_pengumuman'])
                 if 'isi_pengumuman' in data_pengumuman:
                     sql_parts.append("isi_pengumuman = %s")
                     params.append(data_pengumuman['isi_pengumuman'])
-                
-                # Target bisa diubah menjadi None jika dikosongkan dari form
                 target_peran = data_pengumuman.get('target_peran')
                 sql_parts.append("target_peran = %s")
                 params.append(target_peran if target_peran and target_peran != "" else None)
-
                 target_ekskul_id = data_pengumuman.get('target_ekskul_id')
                 sql_parts.append("target_ekskul_id = %s")
-                params.append(target_ekskul_id if target_ekskul_id else None) # Sudah int atau None dari app.py
-                
+                params.append(target_ekskul_id if target_ekskul_id else None)
                 if not sql_parts:
-                    return True # Tidak ada yang diupdate
-
-                sql_parts.append("updated_at = NOW()") # Selalu update kolom updated_at
-
+                    return True 
+                sql_parts.append("updated_at = NOW()") 
                 sql_query = f"UPDATE Pengumuman SET {', '.join(sql_parts)} WHERE id_pengumuman = %s"
                 params.append(id_pengumuman)
-                
                 cursor.execute(sql_query, tuple(params))
                 conn.commit()
                 return True
@@ -969,7 +1017,7 @@ class Config:
                 sql = "DELETE FROM Pengumuman WHERE id_pengumuman = %s"
                 cursor.execute(sql, (id_pengumuman,))
                 conn.commit()
-                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+                return cursor.rowcount > 0 
         except pymysql.MySQLError as e:
             print(f"Error in delete_pengumuman for ID {id_pengumuman}: {e}")
             conn.rollback()
@@ -989,7 +1037,7 @@ class Config:
                                 pnm.tanggal_publikasi, 
                                 usr.nama_lengkap as nama_pembuat 
                             FROM Pengumuman pnm
-                            LEFT JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna # <--- UBAH KE LEFT JOIN
+                            LEFT JOIN Pengguna usr ON pnm.id_pembuat = usr.id_pengguna
                             WHERE pnm.target_peran = 'semua' OR pnm.target_peran = 'guru'
                             ORDER BY pnm.tanggal_publikasi DESC
                             LIMIT 5"""
@@ -1001,61 +1049,29 @@ class Config:
             if conn.open: conn.close()
         return pengumuman_list
 
-    # --- General Utility ---
     def get_counts(self):
         conn = self._get_connection()
-        # Tambahkan 'materi_ekskul' ke dictionary counts
         counts = {'users': 0, 'ekskul': 0, 'pengumuman': 0, 'materi_ekskul': 0} 
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) as total FROM Pengguna")
                 counts['users'] = cursor.fetchone()['total']
-                
                 cursor.execute("SELECT COUNT(*) as total FROM Ekstrakurikuler")
                 counts['ekskul'] = cursor.fetchone()['total']
-                
                 cursor.execute("SELECT COUNT(*) as total FROM Pengumuman")
                 counts['pengumuman'] = cursor.fetchone()['total']
-                
-                # Query baru untuk menghitung total materi ekskul
                 cursor.execute("SELECT COUNT(*) as total FROM MateriEkskul") 
                 counts['materi_ekskul'] = cursor.fetchone()['total']
         except pymysql.MySQLError as e:
             print(f"Error getting counts: {e}")
-            # Anda mungkin ingin mengembalikan None atau dictionary kosong jika ada error
-            # return {'users': 0, 'kelas': 0, 'ekskul': 0, 'pengumuman': 0, 'materi_ekskul': 0}
         finally:
             if conn.open: conn.close()
         return counts
     
     def get_tahun_ajaran_aktif(self):
-        """
-        Placeholder: Mengambil tahun ajaran aktif.
-        Implementasi sebenarnya mungkin mengambil dari tabel setting atau logika lain.
-        """
-        # Untuk contoh, kita kembalikan nilai hardcoded. Ganti dengan query database.
-        # Misalnya:
-        # conn = self._get_connection()
-        # try:
-        #     with conn.cursor() as cursor:
-        #         sql = "SELECT nilai_setting FROM Settings WHERE nama_setting = 'tahun_ajaran_aktif' LIMIT 1"
-        #         cursor.execute(sql)
-        #         result = cursor.fetchone()
-        #         if result:
-        #             return result['nilai_setting']
-        # except pymysql.MySQLError as e:
-        #     print(f"Error fetching tahun ajaran aktif: {e}")
-        # finally:
-        #     if conn.open: conn.close()
-        # return "TAHUN_DEFAULT" # Fallback
-        return "2024/2025" # Ganti dengan implementasi yang benar
+        return "2024/2025" 
 
     def get_murid_options_for_guru_absen(self, id_guru_pembina, tahun_ajaran_aktif):
-        """
-        Mengambil daftar murid yang terdaftar (status Disetujui/Terdaftar) 
-        di semua ekskul yang dibina oleh guru ini pada tahun ajaran aktif.
-        Digunakan untuk mengisi dropdown nama siswa di form absensi.
-        """
         conn = self._get_connection()
         murid_list = []
         try:
@@ -1077,7 +1093,7 @@ class Config:
             if conn.open: conn.close()
         return murid_list
 
-    def get_all_active_murid(self): # Mungkin Anda perlu ini untuk dropdown
+    def get_all_active_murid(self):
         conn = self._get_connection()
         murid_list = []
         try:
@@ -1092,14 +1108,10 @@ class Config:
         return murid_list
 
     def get_pengumuman_for_role(self, peran_target, limit=5):
-        """
-        Mengambil pengumuman yang ditujukan untuk 'semua' atau 'peran_target' tertentu.
-        """
         conn = self._get_connection()
         pengumuman_list = []
         try:
             with conn.cursor() as cursor:
-                # Mengambil juga nama pembuat pengumuman
                 sql = """
                     SELECT pnm.judul_pengumuman, pnm.isi_pengumuman, pnm.tanggal_publikasi,
                            usr.nama_lengkap AS nama_pembuat
@@ -1122,10 +1134,6 @@ class Config:
         return pengumuman_list
 
     def get_ekskul_diikuti_murid_detail(self, murid_id, tahun_ajaran):
-        """
-        Mengambil detail ekstrakurikuler yang diikuti oleh murid tertentu
-        pada tahun ajaran tertentu dengan status pendaftaran aktif.
-        """
         conn = self._get_connection()
         ekskul_diikuti = []
         try:
@@ -1152,10 +1160,6 @@ class Config:
         return ekskul_diikuti
     
     def get_pending_registrations_detailed(self, ekskul_id=None, id_guru_pembina=None):
-        """
-        Mengambil semua pendaftaran ekskul yang statusnya 'Menunggu Persetujuan'.
-        Bisa difilter berdasarkan ekskul_id atau id_guru_pembina.
-        """
         conn = self._get_connection()
         pending_list = []
         try:
@@ -1202,7 +1206,6 @@ class Config:
         pendaftaran = None
         try:
             with conn.cursor() as cursor:
-                # Ambil juga id_ekskul dan tahun_ajaran untuk cek kuota
                 sql = "SELECT * FROM PendaftaranEkskul WHERE id_pendaftaran_ekskul = %s"
                 cursor.execute(sql, (pendaftaran_id,))
                 pendaftaran = cursor.fetchone()
@@ -1242,11 +1245,8 @@ class Config:
                 sql = """SELECT * FROM PendaftaranEkskul 
                          WHERE id_murid = %s AND tahun_ajaran = %s 
                          ORDER BY tanggal_pendaftaran DESC"""
-                # Debug tambahan di Config.py jika diperlukan
-                # print(f"DEBUG SQL (get_pendaftaran_by_murid): Query: {sql}, Params: ({murid_id}, {tahun_ajaran})")
                 cursor.execute(sql, (murid_id, tahun_ajaran))
                 pendaftaran_list = cursor.fetchall()
-                # print(f"DEBUG SQL (get_pendaftaran_by_murid): Result: {pendaftaran_list}")
         except pymysql.MySQLError as e:
             print(f"Error fetching pendaftaran by murid ID {murid_id} for TA {tahun_ajaran}: {e}")
         finally:
@@ -1254,10 +1254,6 @@ class Config:
         return pendaftaran_list
     
     def get_my_attendance_records(self, murid_id, tahun_ajaran):
-        """
-        Mengambil semua catatan absensi seorang murid untuk semua ekskul yang diikutinya
-        (status Disetujui/Terdaftar) pada tahun ajaran tertentu.
-        """
         conn = self._get_connection()
         records = []
         try:
@@ -1289,30 +1285,16 @@ class Config:
         return records
     
     def delete_pendaftaran_ekskul_by_id(self, pendaftaran_id):
-        """Menghapus record pendaftaran ekskul berdasarkan ID pendaftarannya."""
         conn = self._get_connection()
         try:
             with conn.cursor() as cursor:
                 sql = "DELETE FROM PendaftaranEkskul WHERE id_pendaftaran_ekskul = %s"
                 cursor.execute(sql, (pendaftaran_id,))
                 conn.commit()
-                return cursor.rowcount > 0 # True jika ada baris yang terhapus
+                return cursor.rowcount > 0 
         except pymysql.MySQLError as e:
             print(f"Error deleting pendaftaran ekskul by ID {pendaftaran_id}: {e}")
             conn.rollback()
             return False
         finally:
             if conn.open: conn.close()
-
-    # Anda juga akan menggunakan kembali metode-metode yang sudah ada dari Admin
-    # untuk fitur pengelolaan peserta ekskul oleh guru, misalnya:
-    # - get_ekskul_by_id(ekskul_id)
-    # - get_members_of_ekskul(ekskul_id, tahun_ajaran)
-    # - get_all_active_murid_exclude_ekskul(ekskul_id, tahun_ajaran)
-    # - register_student_for_ekskul(murid_id, ekskul_id, tahun_ajaran, ...)
-    # - update_ekskul_registration_status(pendaftaran_id, ...)
-    
-    # Pastikan metode ini sudah ada (dari implementasi Admin)
-
-    # --- Anda perlu menambahkan metode lain sesuai kebutuhan ---
-    # Misalnya: update_user, delete_user, get_kelas_by_id, update_kelas, dst.

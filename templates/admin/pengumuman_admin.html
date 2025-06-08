@@ -2,75 +2,151 @@
 
 {% block title %}Manajemen Pengumuman{% endblock %}
 
+{% block head_extra %}
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .page-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+  }
+
+  .announcement-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .announcement-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-left: 5px solid var(--blue);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .card-header, .card-body, .card-footer {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .card-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: var(--dark);
+  }
+
+  .card-body p {
+    margin: 0;
+    color: #555;
+    line-height: 1.7;
+  }
+
+  .card-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+
+  .meta-tags {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .meta-tag {
+    background-color: #e9ecef;
+    padding: 0.3rem 0.7rem;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+  }
+  .meta-tag .fas {
+    color: #555;
+  }
+
+  .btn { display: inline-block; padding: 0.6rem 1.2rem; border: none; border-radius: 8px; text-decoration: none; font-weight: 600; cursor: pointer; transition: 0.2s ease; font-size: 0.9rem; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary { background-color: var(--blue); color: white; }
+  .btn-primary:hover { background-color: #0056b3; }
+  
+  .card-actions { display: flex; gap: 0.5rem; }
+  .card-actions .btn { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+  .btn-warning { background-color: #ffc107; color: #333; }
+  .btn-warning:hover { background-color: #e0a800; }
+  .btn-danger { background-color: var(--danger); color: white; }
+  .btn-danger:hover { background-color: #c82333; }
+</style>
+{% endblock %}
+
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Daftar Pengumuman</h1>
+    <div class="page-header">
+        <h1>Manajemen Pengumuman</h1>
         <a href="{{ url_for('tambah_pengumuman_admin') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Tambah Pengumuman Baru
+            <i class="fas fa-plus-circle"></i> Tambah Pengumuman
         </a>
     </div>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
+    
     {% if list_pengumuman %}
-    <div class="table-responsive">
-        <table class="table table-striped table-hover table-sm">
-            <thead>
-                <tr>
-                    <th>Judul</th>
-                    <th>Isi Singkat</th>
-                    <th>Tgl Publikasi</th>
-                    <th>Pembuat</th>
-                    <th>Target Peran</th>
-                    <th>Target Kelas</th>
-                    <th>Target Ekskul</th>
-                    <th style="width: 15%;">Aksi</th> {# Lebar kolom aksi disesuaikan #}
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in list_pengumuman %}
-                <tr>
-                    <td>{{ p.judul_pengumuman }}</td>
-                    <td>{{ p.isi_pengumuman|truncate(80, true, '...') }}</td> {# Tampilkan 80 karakter pertama #}
-                    <td>{{ p.tanggal_publikasi.strftime('%d %b %Y, %H:%M') if p.tanggal_publikasi else '-' }}</td>
-                    <td>{{ p.nama_pembuat if p.nama_pembuat else '-' }}</td>
-                    <td>{{ p.target_peran|capitalize if p.target_peran else 'Semua' }}</td>
-                    <td>{{ p.nama_target_kelas if p.nama_target_kelas else '-' }}</td>
-                    <td>{{ p.nama_target_ekskul if p.nama_target_ekskul else '-' }}</td>
-                    <td>
-                        {# Tombol Edit #}
-                        <a href="{{ url_for('edit_pengumuman_admin', id_pengumuman=p.id_pengumuman) }}" class="btn btn-outline-warning btn-sm mb-1" title="Edit">
-                            <i class="fas fa-edit"></i> Edit
-                        </a>
-                        {# Form untuk Tombol Hapus #}
-                        <form action="{{ url_for('hapus_pengumuman_admin', id_pengumuman=p.id_pengumuman) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengumuman \'{{ p.judul_pengumuman|escape }}\'?');">
-                            <button type="submit" class="btn btn-outline-danger btn-sm mb-1" title="Hapus">
-                                <i class="fas fa-trash"></i> Hapus
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="announcement-list">
+        {% for p in list_pengumuman %}
+        <div class="announcement-card">
+            <div class="card-header">
+                <h3>{{ p.judul_pengumuman }}</h3>
+                <div class="card-actions">
+                    <a href="{{ url_for('edit_pengumuman_admin', id_pengumuman=p.id_pengumuman) }}" class="btn btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                    <form action="{{ url_for('hapus_pengumuman_admin', id_pengumuman=p.id_pengumuman) }}" method="POST" onsubmit="return confirm('Yakin hapus pengumuman \'{{ p.judul_pengumuman|escape }}\'?');">
+                        <button type="submit" class="btn btn-danger" title="Hapus"><i class="fas fa-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>{{ p.isi_pengumuman }}</p>
+            </div>
+            <div class="card-footer">
+                <div>
+                    <i class="fas fa-user-edit"></i> Dibuat oleh <strong>{{ p.nama_pembuat or '-' }}</strong> pada {{ p.tanggal_publikasi.strftime('%d %b %Y, %H:%M') if p.tanggal_publikasi else '-' }}
+                </div>
+                <div class="meta-tags">
+                    {% if p.target_peran and p.target_peran != 'semua' %}
+                    <span class="meta-tag"><i class="fas fa-users"></i> {{ p.target_peran|capitalize }}</span>
+                    {% else %}
+                     <span class="meta-tag"><i class="fas fa-globe"></i> Semua Pengguna</span>
+                    {% endif %}
+
+                    {% if p.nama_target_ekskul %}
+                    <span class="meta-tag"><i class="fas fa-puzzle-piece"></i> {{ p.nama_target_ekskul }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
     {% else %}
-    <div class="alert alert-info mt-3" role="alert">
-        Belum ada pengumuman yang dibuat.
-    </div>
+    <p>Belum ada pengumuman yang dibuat.</p>
     {% endif %}
 {% endblock %}
 
-{% block scripts_extra %}
-{# Jika Anda menggunakan Font Awesome dan belum di-link di layout_admin.html, Anda bisa menambahkannya di sini #}
-{# <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> #}
-{% endblock %}
+{% block scripts_extra %}{% endblock %}

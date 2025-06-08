@@ -4,35 +4,32 @@
 
 {% block head_extra %}
 <style>
-    /* Styling spesifik untuk halaman daftar ekskul jika diperlukan */
-    .content-container h2 { /* H2 utama halaman ini */
+    .content-container h2 { 
         color: var(--blue, #007bff);
         border-bottom: 2px solid var(--blue, #007bff);
         padding-bottom: 0.5em;
         margin-bottom: 1.5em;
     }
 
-    /* Menggunakan style .card dan .card-grid dari layout_murid.html */
-    /* Penyesuaian untuk tombol di dalam kartu agar bisa full-width dan ada variasi */
-    .card .cta { /* Tombol CTA di dalam kartu */
+    .card .cta {
         width: 100%;
-        display: block; /* Agar mengambil lebar penuh dan bisa diatur margin atas/bawah */
-        margin-top: auto; /* Mendorong tombol ke bawah jika card flex-direction column */
-        padding: 0.75rem 1rem; /* Padding yang pas untuk tombol kartu */
+        display: block; 
+        margin-top: auto; 
+        padding: 0.75rem 1rem; 
     }
 
-    .cta.cta-daftar { /* Tombol daftar standar (kuning) */
+    .cta.cta-daftar { 
         background-color: var(--yellow, #ffd700);
         color: var(--dark, #333);
     }
     .cta.cta-daftar:hover {
-        background-color: #e6c300; /* Kuning lebih gelap */
+        background-color: #e6c300; 
     }
 
     .cta.cta-disabled-custom,
-    button.cta-disabled-custom[disabled] { /* Tombol yang dinonaktifkan */
-        background-color: #e9ecef; /* Warna abu-abu terang */
-        color: #6c757d; /* Warna teks abu-abu */
+    button.cta-disabled-custom[disabled] {
+        background-color: #e9ecef;
+        color: #6c757d; 
         cursor: not-allowed;
         border: 1px solid #ced4da;
         box-shadow: none;
@@ -45,29 +42,29 @@
     }
 
     .card-text-details p {
-        font-size: 0.85rem; /* Ukuran font lebih kecil untuk detail di kartu */
+        font-size: 0.85rem; 
         margin-bottom: 0.4rem;
-        text-align: left; /* Detail rata kiri */
+        text-align: left; 
         color: #454545;
     }
     .card-text-details strong {
         color: var(--dark, #333);
     }
-    .card-body { /* Pastikan card-body adalah flex column untuk mt-auto bekerja */
+    .card-body { 
         display: flex;
         flex-direction: column;
         flex-grow: 1;
     }
-    .card-title { /* Alias untuk h3 di dalam card dari layout */
-        color: var(--blue, #007bff); /* Menyamakan dengan h3 di layout */
+    .card-title { 
+        color: var(--blue, #007bff);
         font-size: 1.25rem;
         margin-bottom: 0.75rem;
     }
-    .logo-ekskul-container { /* Untuk logo agar konsisten */
-        width: 80px; /* Sama seperti di .card img layout */
+    .logo-ekskul-container { 
+        width: 80px; 
         height: 80px;
         margin: 0 auto 1rem auto;
-        overflow: hidden; /* Jika gambar lebih besar */
+        overflow: hidden; 
     }
     .logo-ekskul-container img {
         width: 100%;
@@ -80,7 +77,7 @@
 {% block content %}
 <div class="container content-container">
     <h2>Daftar Ekstrakurikuler <small class="text-muted" style="font-size:0.7em;">(Tahun Ajaran {{ tahun_ajaran_aktif }})</small></h2>
-    <p>Halo, <strong>{{ nama_murid }}</strong>! Pilih ekstrakurikuler yang kamu minati di bawah ini.</p>
+    <p>Halo, <strong>{{ nama_murid }}</strong>! Pilih ekstrakurikuler yang kamu minati di bawah ini:</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -102,10 +99,9 @@
                             <img src="{{ url_for('static', filename='uploads/logos/' ~ ekskul.url_logo_ekskul) }}" alt="Logo {{ ekskul.nama_ekskul }}">
                         {% else %}
                             <img src="{{ url_for('static', filename='images/default_logo.png') }}" alt="Logo Ekskul Default"> 
-                            {# Ganti images/default_logo.png dengan path default Anda #}
                         {% endif %}
                     </div>
-                    <div class="card-body"> {# Bootstrap card-body untuk flex-column #}
+                    <div class="card-body"> 
                         <h3 class="card-title">{{ ekskul.nama_ekskul }}</h3>
                         <div class="card-text-details">
                             <p><small class="text-muted">Kategori: {{ ekskul.kategori | default('Umum', true) }}</small></p>
@@ -123,7 +119,7 @@
                             <p class="mt-2" style="font-size: 0.8rem; color: #666;"><em>{{ ekskul.deskripsi | truncate(100, true) }}</em></p>
                         </div>
                         
-                        <div class="mt-auto pt-3"> {# mt-auto mendorong ke bawah, pt-3 memberi jarak atas #}
+                        <div class="mt-auto pt-3">
                             {% if ekskul.id_ekskul in ids_ekskul_sudah_diikuti %}
                                 <button type="button" class="cta cta-disabled-custom" disabled><i class="fas fa-check-circle"></i> Sudah Terdaftar</button>
                             {% elif not ekskul.status_aktif %}

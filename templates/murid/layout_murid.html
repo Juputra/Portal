@@ -27,9 +27,9 @@
         background-color: var(--gray);
         color: var(--dark);
         line-height: 1.6;
-        display: flex; /* Untuk sticky footer */
-        flex-direction: column; /* Untuk sticky footer */
-        min-height: 100vh; /* Untuk sticky footer */
+        display: flex; 
+        flex-direction: column; 
+        min-height: 100vh; 
       }
 
       header {
@@ -37,7 +37,7 @@
         color: var(--white);
         padding: 2rem 1rem;
         text-align: center;
-        background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); /* Anda bisa ganti atau buat ini dinamis jika perlu */
+        background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); 
       }
 
       header h1 {
@@ -50,34 +50,41 @@
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Tambahan shadow untuk nav */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
 
       nav a {
         color: white;
         text-decoration: none;
-        padding: 1rem 1.2rem; /* Sedikit penyesuaian padding */
-        transition: background 0.3s ease, color 0.3s ease; /* Transisi warna juga */
+        padding: 1rem 1.2rem; 
+        transition: background 0.3s ease, color 0.3s ease; 
       }
 
-      nav a:hover, nav a.active { /* Kelas 'active' untuk menandai halaman aktif */
+      nav a:hover, nav a.active { 
         background: var(--blue);
-        color: var(--white); /* Pastikan teks tetap terlihat */
+        color: var(--white);
       }
-      nav a .fas { /* Styling untuk ikon di nav jika ada */
+      nav a .fas { 
           margin-right: 8px;
       }
-
-      /* .container akan ada di child template, tapi kita bisa siapkan wrapper jika perlu */
-      .main-content-wrapper {
-          flex-grow: 1; /* Untuk sticky footer */
+      
+      .nav-logout {
+          background-color: var(--danger);
+          border-radius: 5px;
+          margin-left: 1rem;
+      }
+      .nav-logout:hover {
+          background-color: #c82333;
       }
 
-      /* Styling umum yang mungkin dipakai di banyak halaman anak */
+      .main-content-wrapper {
+          flex-grow: 1;
+      }
+
       .container {
         max-width: 1100px;
         margin: 2rem auto;
-        padding: 1.5rem; /* Sedikit penyesuaian padding */
+        padding: 1.5rem; 
         background: var(--white);
         border-radius: 12px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
@@ -87,15 +94,15 @@
         margin-bottom: 2.5rem;
       }
       section:last-child {
-          margin-bottom: 0; /* Hapus margin bawah untuk section terakhir di container */
+          margin-bottom: 0; 
       }
 
       h2 {
         color: var(--blue);
-        margin-bottom: 1.5rem; /* Sedikit penyesuaian margin */
+        margin-bottom: 1.5rem; 
         border-left: 6px solid var(--yellow);
-        padding-left: 12px; /* Sedikit penyesuaian padding */
-        font-size: 1.8rem; /* Sedikit penyesuaian ukuran font */
+        padding-left: 12px; 
+        font-size: 1.8rem; 
       }
       
       h3 {
@@ -109,8 +116,6 @@
           margin-bottom: 0.5rem;
       }
 
-
-      /* --- Styling untuk elemen umum dari dashboard_murid.html --- */
       table {
         width: 100%;
         border-collapse: collapse;
@@ -120,16 +125,16 @@
       th, td {
         border: 1px solid #ddd;
         padding: 12px;
-        text-align: left; /* Default text align */
+        text-align: left;
       }
 
       th {
         background-color: #e6f0ff;
-        font-weight: 600; /* Membuat header tabel lebih tebal */
+        font-weight: 600;
       }
       
       tbody tr:hover {
-        background-color: #f1f6fb; /* Efek hover untuk baris tabel */
+        background-color: #f1f6fb; 
       }
 
       .materi-list {
@@ -142,13 +147,13 @@
         margin-bottom: 0.75rem;
         background: #f9f9f9;
         border-left: 5px solid var(--blue);
-        transition: transform 0.2s, box-shadow 0.2s; /* Tambahkan transisi shadow */
-        border-radius: 6px; /* Sedikit border radius */
+        transition: transform 0.2s, box-shadow 0.2s; 
+        border-radius: 6px; 
       }
 
       .materi-item:hover {
         transform: scale(1.02);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Shadow saat hover */
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
       }
 
       .materi-item a {
@@ -159,7 +164,7 @@
 
       .card-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Penyesuaian minmax */
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
         gap: 1.5rem;
       }
 
@@ -170,9 +175,9 @@
         padding: 1.5rem;
         text-align: center;
         transition: transform 0.2s, box-shadow 0.2s;
-        display: flex; /* Untuk alignment konten card */
-        flex-direction: column; /* Konten card tersusun vertikal */
-        justify-content: space-between; /* Untuk menata tombol CTA */
+        display: flex; 
+        flex-direction: column; 
+        justify-content: space-between;
       }
 
       .card:hover {
@@ -184,12 +189,12 @@
         width: 80px;
         height: 80px;
         object-fit: contain;
-        margin: 0 auto 1rem auto; /* Pusatkan gambar dan beri margin bawah */
+        margin: 0 auto 1rem auto; 
       }
 
       .card h3 {
         margin-bottom: 0.5rem;
-        font-size: 1.25rem; /* Sesuaikan ukuran font */
+        font-size: 1.25rem; 
         color: var(--blue);
       }
       .card p {
@@ -197,46 +202,46 @@
           color: #555;
           margin-bottom: 0.5rem;
       }
-      .card .details { /* Wrapper untuk detail seperti pembina, jadwal */
+      .card .details { 
           flex-grow: 1;
       }
 
 
       .cta {
         display: inline-block;
-        margin-top: 1rem; /* penyesuaian margin */
-        padding: 0.6rem 1.2rem; /* penyesuaian padding */
+        margin-top: 1rem; 
+        padding: 0.6rem 1.2rem; 
         background: var(--yellow);
-        color: var(--dark); /* ubah warna teks agar kontras dengan kuning */
-        border-radius: 25px; /* penyesuaian radius */
+        color: var(--dark); 
+        border-radius: 25px; 
         text-decoration: none;
         font-size: 0.9rem;
-        font-weight: 600; /* buat teks cta lebih tebal */
+        font-weight: 600; 
         transition: background-color 0.3s ease, transform 0.2s ease;
       }
       .cta:hover {
-          background-color: #e6c300; /* Warna kuning lebih gelap saat hover */
+          background-color: #e6c300; 
           transform: translateY(-2px);
-          text-decoration: none; /* Hapus underline saat hover jika tidak diinginkan */
+          text-decoration: none; 
       }
-      .cta-secondary { /* Tombol alternatif */
+      .cta-secondary { 
           background-color: var(--blue);
           color: var(--white);
       }
       .cta-secondary:hover {
-          background-color: #0056b3; /* Warna biru lebih gelap */
+          background-color: #0056b3; 
       }
 
 
       footer {
         text-align: center;
         padding: 1.5rem;
-        background-color: #002b5b; /* Warna gelap untuk footer */
+        background-color: #002b5b;
         color: white;
-        margin-top: auto; /* Untuk sticky footer */
+        margin-top: auto; 
       }
 
-      @media screen and (max-width: 768px) { /* Penyesuaian breakpoint */
+      @media screen and (max-width: 768px) { 
         nav a {
           padding: 0.8rem 1rem;
           font-size: 0.95rem;
@@ -250,40 +255,39 @@
       }
        @media screen and (max-width: 600px) {
         nav {
-            flex-direction: column; /* Nav menjadi vertikal di layar kecil */
+            flex-direction: column; 
             align-items: center;
         }
         nav a {
           padding: 0.75rem;
           font-size: 0.9rem;
-          width: 100%; /* Nav item mengambil lebar penuh */
+          width: 100%; 
           text-align: center;
-          border-bottom: 1px solid #444; /* Pemisah antar nav item */
+          border-bottom: 1px solid #444;
         }
         nav a:last-child {
             border-bottom: none;
         }
         .card-grid {
-            grid-template-columns: 1fr; /* Satu kartu per baris di layar sangat kecil */
+            grid-template-columns: 1fr; 
         }
       }
     </style>
-    {% block head_extra %}{% endblock %} {# Untuk CSS atau script tambahan di head per halaman #}
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
     <header>
-      <h1>Ekstrakurikuler Siswa</h1>
+      <h1>Portal Ekstrakurikuler Siswa</h1>
       <p>Temukan aktivitas seru dan kembangkan bakatmu!</p>
     </header>
 
     <nav>
-      {# Tautan navigasi dinamis dari dashboard_murid.html Anda #}
       <a href="{{ url_for('dashboard_murid') }}"><i class="fas fa-home"></i> Dashboard</a>
       <a href="{{ url_for('lihat_ekskul_murid') }}"><i class="fas fa-th-list"></i> Daftar Ekskul</a>
       <a href="{{ url_for('ekskul_saya_murid') }}"><i class="fas fa-star"></i> Ekskul Saya</a>
       <a href="{{ url_for('lihat_absensi_ekskul_saya') }}"><i class="fas fa-calendar-check"></i> Absensi Saya</a>
       <a href="{{ url_for('edit_profil_murid') }}"><i class="fas fa-user-edit"></i> Profil Saya</a>
-      <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      <a class = "nav-logout" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </nav>
 
     <div class="main-content-wrapper">
@@ -295,6 +299,6 @@
       &copy; {{ now.year if now else '2025' }} Ekstrakurikuler Sekolah - Dibuat dengan <span style="color: var(--blue);">💙</span><span style="color: var(--yellow);">💛</span>
     </footer>
 
-    {% block scripts %}{% endblock %} {# Untuk script tambahan di akhir body per halaman #}
+    {% block scripts %}{% endblock %}
 </body>
 </html>

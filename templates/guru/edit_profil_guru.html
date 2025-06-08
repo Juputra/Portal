@@ -1,6 +1,6 @@
-{% extends "murid/layout_murid.html" %}
+{% extends "guru/layout_guru.html" %}
 
-{% block title %}Edit Profil Saya - {{ nama_murid }}{% endblock %}
+{% block title %}Edit Profil Saya - {{ nama_guru }}{% endblock %}
 
 {% block head_extra %}
 <style>
@@ -16,19 +16,20 @@
         padding: 2rem;
         border-radius: 12px;
         box-shadow: 0 8px 16px rgba(0,0,0,0.05);
-        margin-top: 1rem; 
+        margin-top: 1rem;
     }
 
     .edit-profil-card .form-section-title {
         font-size: 1.3rem;
         font-weight: 600;
         color: var(--dark, #333);
-        margin-top: 0; 
+        margin-top: 0;
         margin-bottom: 1.5rem;
         border-bottom: 1px solid #eee;
         padding-bottom: 0.75rem;
     }
-    .edit-profil-card .form-section-title.subsequent { 
+
+    .edit-profil-card .form-section-title.subsequent {
         margin-top: 1.5rem;
     }
 
@@ -43,7 +44,7 @@
         color: var(--dark, #333);
         font-size: 0.9rem;
     }
-    .form-group-custom label .text-danger { 
+    .form-group-custom label .text-danger {
         color: #dc3545;
         font-weight: bold;
     }
@@ -59,19 +60,19 @@
         font-size: 0.95rem;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .form-group-custom input[type="text"]:focus,
-    .form-group-custom input[type="email"]:focus,
-    .form-group-custom input[type="password"]:focus {
+
+    .form-group-custom input:focus {
         border-color: var(--blue, #007bff);
         box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
         outline: none;
     }
+
     .form-group-custom input[readonly] {
         background-color: var(--gray, #f4f4f4);
         cursor: not-allowed;
     }
 
-    .form-text-custom { 
+    .form-text-custom {
         font-size: 0.8rem;
         color: #6c757d;
         display: block;
@@ -84,7 +85,7 @@
     }
 
     .btn-simpan-profil {
-        display: block; 
+        display: block;
         width: 100%;
         padding: 0.85rem 1.5rem;
         font-size: 1rem;
@@ -97,10 +98,12 @@
         text-align: center;
         transition: background-color 0.2s ease, transform 0.2s ease;
     }
+
     .btn-simpan-profil:hover {
         background-color: #0056b3;
         transform: translateY(-1px);
     }
+
     .btn-simpan-profil .fas {
         margin-right: 8px;
     }
@@ -110,7 +113,7 @@
 {% block content %}
 <div class="container content-container">
     <h2>Edit Profil Saya</h2>
-    <p>Ubah informasi profil Anda di bawah ini, <strong>{{ nama_murid }}</strong>.</p>
+    <p>Ubah informasi profil Anda di bawah ini, <strong>{{ nama_guru }}</strong>.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -123,29 +126,27 @@
         {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('edit_profil_murid') }}">
+    <form method="POST" action="{{ url_for('edit_profil_guru') }}">
         <div class="edit-profil-card">
             <h5 class="form-section-title">Informasi Pribadi</h5>
-            
+
             <div class="form-group-custom">
                 <label for="nama_lengkap">Nama Lengkap <span class="text-danger">*</span></label>
                 <input type="text" id="nama_lengkap" name="nama_lengkap" 
                        value="{{ user_data.nama_lengkap if user_data else session.nama_lengkap }}" required>
             </div>
-            
-            <div class="form-group-custom">
-                <label for="nomor_induk">Nomor Induk (NIS/NISN)</label>
-                <input type="text" id="nomor_induk" name="nomor_induk" 
-                       value="{{ user_data.nomor_induk if user_data else '' }}" readonly>
-                <small class="form-text-custom">Nomor induk tidak dapat diubah.</small>
-            </div>
-            
+
             <div class="form-group-custom">
                 <label for="email">Email <span class="text-danger">*</span></label>
                 <input type="email" id="email" name="email" 
-                       value="{{ user_data.email if user_data else session.email if 'email' in session else '' }}" required>
+                       value="{{ user_data.email if user_data else session.email }}" required>
             </div>
-            
+            <div class="form-group-custom">
+                <label for="nomor_induk">Nomor Induk (NIP)</label>
+                <input type="text" id="nomor_induk" name="nomor_induk" 
+                       value="{{ user_data.nomor_induk }}" readonly>
+                <small class="form-text-custom">Nomor induk tidak dapat diubah.</small>
+            </div>
             <div class="form-group-custom">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" 
@@ -155,19 +156,19 @@
 
             <hr>
             <h5 class="form-section-title subsequent">Ubah Password (Opsional)</h5>
-            <p><small class="form-text-custom" style="margin-bottom:1rem; display:block;">Kosongkan field password jika tidak ingin mengubah password.</small></p>
-            
+            <p><small class="form-text-custom">Kosongkan bagian ini jika Anda tidak ingin mengubah password.</small></p>
+
             <div class="form-group-custom">
                 <label for="current_password">Password Saat Ini</label>
                 <input type="password" id="current_password" name="current_password">
                 <small class="form-text-custom">Diperlukan jika ingin mengubah password.</small>
             </div>
-            
+
             <div class="form-group-custom">
                 <label for="new_password">Password Baru</label>
                 <input type="password" id="new_password" name="new_password">
             </div>
-            
+
             <div class="form-group-custom">
                 <label for="confirm_new_password">Konfirmasi Password Baru</label>
                 <input type="password" id="confirm_new_password" name="confirm_new_password">

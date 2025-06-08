@@ -1,85 +1,276 @@
-{% extends "admin/layout_admin.html" %} {% block title %}{{ judul_halaman | default('Kelola Pendaftaran Ekskul') }}{% endblock %}
+{% extends "admin/layout_admin.html" %} 
+
+{% block title %}{{ judul_halaman | default('Kelola Pendaftaran Ekskul') }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .card {
+        background-color: var(--white);
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .card-header {
+        background-color: #f8f9fa;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .card-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--dark);
+        border: none;
+        padding: 0;
+    }
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .table-wrapper { overflow-x: auto; }
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .table-custom th, .table-custom td {
+        padding: 0.8rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e9ecef;
+        vertical-align: middle;
+    }
+    .table-custom thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+    .table-custom tbody tr:hover { background-color: #f1f3f5; }
+    
+    .actions-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 0.3rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.85rem; }
+    .btn-success { background-color: #28a745; color: white; border-color: #28a745; }
+    .btn-success:hover { background-color: #218838; }
+    .btn-danger { background-color: #dc3545; color: white; border-color: #dc3545; }
+    .btn-danger:hover { background-color: #c82333; }
+    .btn-secondary { background-color: #6c757d; color: white; border-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-weight: 500; margin-bottom: 0.5rem; }
+    .form-control {
+        display: block; width: 100%; padding: 0.5rem;
+        border: 1px solid #ccc; border-radius: 0.25rem;
+    }
+    
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 1040;
+        opacity: 0;
+        transition: opacity 0.15s linear;
+    }
+    .modal-backdrop.show {
+        opacity: 1;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 1050;
+        overflow: hidden;
+        outline: 0;
+        display: none; 
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 5vh;
+    }
+    .modal-dialog {
+        position: relative;
+        width: auto;
+        margin: 0.5rem;
+        pointer-events: none;
+        max-width: 500px;
+        transform: translateY(-50px);
+        transition: transform 0.3s ease-out;
+    }
+    .modal.show .modal-dialog {
+        transform: none;
+    }
+    .modal-content {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        pointer-events: auto;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid rgba(0,0,0,.2);
+        border-radius: 0.3rem;
+        outline: 0;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .modal-title { font-size: 1.25rem; margin: 0; }
+    .modal-close-btn {
+        background: transparent;
+        border: 0;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+    .modal-body { position: relative; flex: 1 1 auto; padding: 1rem; }
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-top: 1px solid #dee2e6;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>{{ judul_halaman | default('Kelola Pendaftaran Ekskul') }}</h2>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    {% if pending_registrations %}
-    <div class="table-responsive">
-        <table class="table table-striped table-hover">
-            <thead>
-                <tr>
-                    <th>Tanggal Daftar</th>
-                    <th>Nama Murid</th>
-                    <th>No. Induk</th>
-                    <th>Ekskul</th>
-                    <th>Pembina</th>
-                    <th>Tahun Ajaran</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for reg in pending_registrations %}
-                <tr>
-                    <td>{{ reg.tanggal_pendaftaran.strftime('%d-%m-%Y %H:%M') if reg.tanggal_pendaftaran else 'N/A' }}</td>
-                    <td>{{ reg.nama_murid }}</td>
-                    <td>{{ reg.nomor_induk_murid | default('N/A') }}</td>
-                    <td>{{ reg.nama_ekskul }}</td>
-                    <td>{{ reg.nama_pembina | default('N/A') }}</td>
-                    <td>{{ reg.tahun_ajaran }}</td>
-                    <td>
-                        <form action="{{ url_for('setujui_pendaftaran_admin', pendaftaran_id=reg.id_pendaftaran_ekskul) }}" method="POST" class="d-inline" onsubmit="return confirm('Setujui pendaftaran ini?')">
-                            <button type="submit" class="btn btn-success btn-sm">
-                                <i class="fas fa-check"></i> Setujui
-                            </button>
-                        </form>
-                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#tolakModal{{ reg.id_pendaftaran_ekskul }}">
-                            <i class="fas fa-times"></i> Tolak
-                        </button>
-
-                        <div class="modal fade" id="tolakModal{{ reg.id_pendaftaran_ekskul }}" tabindex="-1" aria-labelledby="tolakModalLabel{{ reg.id_pendaftaran_ekskul }}" aria-hidden="true">
-                          <div class="modal-dialog">
-                            <div class="modal-content">
-                              <form action="{{ url_for('tolak_pendaftaran_admin', pendaftaran_id=reg.id_pendaftaran_ekskul) }}" method="POST">
-                                <div class="modal-header">
-                                  <h5 class="modal-title" id="tolakModalLabel{{ reg.id_pendaftaran_ekskul }}">Tolak Pendaftaran: {{ reg.nama_murid }} - {{ reg.nama_ekskul }}</h5>
-                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                  <div class="mb-3">
-                                    <label for="alasan_penolakan_{{ reg.id_pendaftaran_ekskul }}" class="form-label">Alasan Penolakan (Opsional):</label>
-                                    <textarea class="form-control" id="alasan_penolakan_{{ reg.id_pendaftaran_ekskul }}" name="alasan_penolakan" rows="3"></textarea>
-                                  </div>
-                                </div>
-                                <div class="modal-footer">
-                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                                  <button type="submit" class="btn btn-danger">Ya, Tolak</button>
-                                </div>
-                              </form>
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-clipboard-list"></i> {{ judul_halaman | default('Pendaftaran Menunggu Persetujuan') }}</h2>
+    </div>
+    <div class="card-body">
+        {% if pending_registrations %}
+        <div class="table-wrapper">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Tanggal Daftar</th>
+                        <th>Nama Murid</th>
+                        <th>No. Induk</th>
+                        <th>Ekskul</th>
+                        <th>Pembina</th>
+                        <th>Tahun Ajaran</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reg in pending_registrations %}
+                    <tr>
+                        <td>{{ reg.tanggal_pendaftaran.strftime('%d %b %Y, %H:%M') if reg.tanggal_pendaftaran else 'N/A' }}</td>
+                        <td>{{ reg.nama_murid }}</td>
+                        <td>{{ reg.nomor_induk_murid or 'N/A' }}</td>
+                        <td>{{ reg.nama_ekskul }}</td>
+                        <td>{{ reg.nama_pembina or 'N/A' }}</td>
+                        <td>{{ reg.tahun_ajaran }}</td>
+                        <td>
+                            <div class="actions-group">
+                                <form action="{{ url_for('setujui_pendaftaran_admin', pendaftaran_id=reg.id_pendaftaran_ekskul) }}" method="POST" onsubmit="return confirm('Anda yakin ingin MENYETUJUI pendaftaran untuk {{ reg.nama_murid }}?')">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check"></i> Setujui
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="openModal('tolakModal-{{ reg.id_pendaftaran_ekskul }}')">
+                                    <i class="fas fa-times"></i> Tolak
+                                </button>
                             </div>
-                          </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>Tidak ada pendaftaran yang menunggu persetujuan saat ini.</p>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="alert alert-info" role="alert">
-        Tidak ada pendaftaran yang menunggu persetujuan saat ini.
-    </div>
-    {% endif %}
 </div>
+
+{% for reg in pending_registrations %}
+<div class="modal-backdrop" id="tolakModal-{{ reg.id_pendaftaran_ekskul }}-backdrop" onclick="closeModal('tolakModal-{{ reg.id_pendaftaran_ekskul }}')"></div>
+<div class="modal" id="tolakModal-{{ reg.id_pendaftaran_ekskul }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('tolak_pendaftaran_admin', pendaftaran_id=reg.id_pendaftaran_ekskul) }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tolak Pendaftaran: {{ reg.nama_murid }}</h5>
+                    <button type="button" class="modal-close-btn" onclick="closeModal('tolakModal-{{ reg.id_pendaftaran_ekskul }}')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Anda akan menolak pendaftaran <strong>{{ reg.nama_murid }}</strong> untuk ekstrakurikuler <strong>{{ reg.nama_ekskul }}</strong>.</p>
+                    <div class="form-group">
+                        <label for="alasan_penolakan_{{ reg.id_pendaftaran_ekskul }}" class="form-label">Alasan Penolakan (Opsional):</label>
+                        <textarea class="form-control" id="alasan_penolakan_{{ reg.id_pendaftaran_ekskul }}" name="alasan_penolakan" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('tolakModal-{{ reg.id_pendaftaran_ekskul }}')">Batal</button>
+                    <button type="submit" class="btn btn-danger">Ya, Tolak Pendaftaran</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        const backdrop = document.getElementById(modalId + '-backdrop');
+        if (modal && backdrop) {
+            document.body.style.overflow = 'hidden'; // Mencegah scroll di belakang modal
+            backdrop.style.display = 'block';
+            modal.style.display = 'flex';
+            setTimeout(() => { // Memberi waktu untuk display block sebelum transisi
+                backdrop.classList.add('show');
+                modal.classList.add('show');
+            }, 10);
+        }
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        const backdrop = document.getElementById(modalId + '-backdrop');
+        if (modal && backdrop) {
+            document.body.style.overflow = ''; // Mengembalikan scroll
+            backdrop.classList.remove('show');
+            modal.classList.remove('show');
+            setTimeout(() => { // Tunggu transisi selesai sebelum display none
+                backdrop.style.display = 'none';
+                modal.style.display = 'none';
+            }, 150);
+        }
+    }
+    
+    // Menambahkan fungsionalitas tombol Escape untuk menutup modal
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.modal.show').forEach(modal => {
+                closeModal(modal.id);
+            });
+        }
+    });
+</script>
 {% endblock %}

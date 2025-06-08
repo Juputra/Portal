@@ -1,51 +1,199 @@
 {% extends "admin/layout_admin.html" %}
 
-{% block title %}{{ action }} Pengguna{% endblock %}
+{% block title %}{{ action }} Pengguna - Admin Portal{% endblock %}
+
+{# Menambahkan blok CSS khusus HANYA untuk halaman formulir ini #}
+{% block head_extra %}
+<style>
+    .card {
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+    .card-header {
+        background-color: #f8f9fa;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .card-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--dark);
+    }
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    .form-label .required-star {
+        color: var(--danger);
+    }
+
+    .form-control {
+        display: block;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--dark);
+        background-color: var(--white);
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        appearance: none;
+        border-radius: 0.3rem;
+        transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    }
+    .form-control:focus {
+        color: var(--dark);
+        background-color: var(--white);
+        border-color: var(--blue);
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+    }
+    .form-control[readonly] {
+        background-color: #e9ecef;
+        opacity: 1;
+    }
+    
+    .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 16px 12px;
+    }
+
+    .form-text {
+        font-size: 0.875em;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .form-check-input {
+        width: 1.25em;
+        height: 1.25em;
+    }
+    .form-check-label {
+        font-weight: 500;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+    .btn {
+        display: inline-block;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 0.6rem 1.2rem;
+        border-radius: 0.3rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-primary {
+        background-color: var(--blue);
+        color: var(--white);
+        border-color: var(--blue);
+    }
+    .btn-primary:hover {
+        background-color: #0069d9;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        color: var(--white);
+        border-color: #6c757d;
+    }
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+</style>
+{% endblock %}
+
 
 {% block content %}
-    <h1>{{ action }} Pengguna</h1>
-    <form method="POST" action="{{ url_for('edit_user_admin', user_id=user_data.id_pengguna) if action == 'Edit' else url_for('add_user_admin') }}">
-        <div class="mb-3">
-            <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="username" name="username" value="{{ user_data.username if user_data else '' }}" required {% if action == 'Edit' %}readonly{% endif %}>
-            {% if action == 'Edit' %}<small class="form-text text-muted">Username tidak dapat diubah.</small>{% endif %}
-        </div>
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-user-edit"></i>
+        <h1>{{ action }} Pengguna</h1>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('edit_user_admin', user_id=user_data.id_pengguna) if action == 'Edit' else url_for('add_user_admin') }}">
+            
+            <div class="form-group">
+                <label for="username" class="form-label">Username <span class="required-star">*</span></label>
+                <input type="text" class="form-control" id="username" name="username" value="{{ user_data.username or '' }}" required {% if action == 'Edit' %}readonly{% endif %}>
+                {% if action == 'Edit' %}<div class="form-text">Username tidak dapat diubah.</div>{% endif %}
+            </div>
 
-        <div class="mb-3">
-            <label for="password" class="form-label">Password {% if action == 'Tambah' %}<span class="text-danger">*</span>{% endif %}</label>
-            <input type="password" class="form-control" id="password" name="password" {% if action == 'Tambah' %}required{% endif %}>
-            {% if action == 'Edit' %}<small class="form-text text-muted">Kosongkan jika tidak ingin mengubah password.</small>{% endif %}
-        </div>
+            <div class="form-group">
+                <label for="password" class="form-label">Password {% if action == 'Tambah' %}<span class="required-star">*</span>{% endif %}</label>
+                <input type="password" class="form-control" id="password" name="password" {% if action == 'Tambah' %}required{% endif %} autocomplete="new-password">
+                {% if action == 'Edit' %}<div class="form-text">Kosongkan jika tidak ingin mengubah password.</div>{% endif %}
+            </div>
 
-        <div class="mb-3">
-            <label for="nama_lengkap" class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" value="{{ user_data.nama_lengkap if user_data else '' }}" required>
-        </div>
-        <div class="mb-3">
-            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-            <input type="email" class="form-control" id="email" name="email" value="{{ user_data.email if user_data else '' }}" required>
-        </div>
-        <div class="mb-3">
-            <label for="peran" class="form-label">Peran <span class="text-danger">*</span></label>
-            <select class="form-select" id="peran" name="peran" required>
-                <option value="murid" {% if user_data and user_data.peran == 'murid' %}selected{% endif %}>Murid</option>
-                <option value="guru" {% if user_data and user_data.peran == 'guru' %}selected{% endif %}>Guru</option>
-                <option value="admin" {% if user_data and user_data.peran == 'admin' %}selected{% endif %}>Admin</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="nomor_induk" class="form-label">Nomor Induk (NIS/NIP)</label>
-            <input type="text" class="form-control" id="nomor_induk" name="nomor_induk" value="{{ user_data.nomor_induk if user_data and user_data.nomor_induk is not none else '' }}">
-        </div>
+            <div class="form-group">
+                <label for="nama_lengkap" class="form-label">Nama Lengkap <span class="required-star">*</span></label>
+                <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" value="{{ user_data.nama_lengkap or '' }}" required>
+            </div>
 
-        {% if action == 'Edit' %}
-        <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="status_aktif" name="status_aktif" value="1" {% if user_data and user_data.status_aktif %}checked{% endif %}>
-            <label class="form-check-label" for="status_aktif">Akun Aktif</label>
-        </div>
-        {% endif %}
+            <div class="form-group">
+                <label for="email" class="form-label">Email <span class="required-star">*</span></label>
+                <input type="email" class="form-control" id="email" name="email" value="{{ user_data.email or '' }}" required>
+            </div>
 
-        <button type="submit" class="btn btn-primary">{{ action }} Pengguna</button>
-        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#pengguna-content' }}" class="btn btn-secondary">Batal</a>
-    </form>
+            <div class="form-group">
+                <label for="peran" class="form-label">Peran <span class="required-star">*</span></label>
+                <select class="form-control form-select" id="peran" name="peran" required>
+                    <option value="" disabled {% if not user_data.peran %}selected{% endif %}>-- Pilih Peran --</option>
+                    <option value="murid" {% if user_data.peran == 'murid' %}selected{% endif %}>Murid</option>
+                    <option value="guru" {% if user_data.peran == 'guru' %}selected{% endif %}>Guru</option>
+                    <option value="admin" {% if user_data.peran == 'admin' %}selected{% endif %}>Admin</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="nomor_induk" class="form-label">Nomor Induk (NIS/NIP)</label>
+                <input type="text" class="form-control" id="nomor_induk" name="nomor_induk" value="{{ user_data.nomor_induk or '' }}">
+            </div>
+
+            {% if action == 'Edit' %}
+            <div class="form-group">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="status_aktif" name="status_aktif" value="1" {% if user_data and user_data.status_aktif %}checked{% endif %}>
+                    <label class="form-check-label" for="status_aktif">Akun Aktif</label>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> {{ action }} Pengguna</button>
+                <a href="{{ cancel_url or url_for('users_admin') }}" class="btn btn-secondary">Batal</a>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

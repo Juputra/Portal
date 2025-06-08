@@ -1,71 +1,185 @@
 {% extends "admin/layout_admin.html" %}
 
-{% block title %}Kelola Ekstrakurikuler Berdasarkan Kategori{% endblock %}
+{% block title %}Kelola Ekstrakurikuler{% endblock %}
+
+{% block head_extra %}
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; 
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .page-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--dark);
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    font-size: 0.9rem;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+  }
+  .btn-primary {
+    background-color: var(--blue);
+    color: var(--white);
+  }
+  .btn-primary:hover {
+    background-color: #0056b3; 
+  }
+  
+  .category-title {
+    font-size: 1.5rem;
+    color: var(--dark);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--yellow);
+  }
+  
+  .table-wrapper {
+      overflow-x: auto; 
+  }
+
+  .custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .custom-table th,
+  .custom-table td {
+    padding: 0.9rem 1rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .custom-table thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #555;
+    text-transform: uppercase;
+  }
+  
+  .custom-table tbody tr:hover {
+      background-color: #f1f6fb;
+  }
+
+  .status-badge {
+    padding: 0.3em 0.7em;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .status-aktif {
+    background-color: #d1e7dd;
+    color: #0f5132;
+  }
+  .status-nonaktif {
+    background-color: #e9ecef;
+    color: #495057;
+  }
+
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap; 
+    gap: 0.5rem; 
+  }
+  .action-buttons .btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+  }
+  .action-buttons form {
+      margin: 0;
+  }
+  
+  .btn-info { background-color: #0dcaf0; color: white; }
+  .btn-info:hover { background-color: #0baccc; }
+  
+  .btn-warning { background-color: #ffc107; color: #333; }
+  .btn-warning:hover { background-color: #e0a800; }
+  
+  .btn-danger { background-color: var(--danger); color: white; }
+  .btn-danger:hover { background-color: #c82333; }
+
+</style>
+{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Daftar Ekstrakurikuler</h1>
-        <a href="{{ url_for('add_ekskul_admin') }}" class="btn btn-primary">Tambah Ekskul Baru</a>
+    <div class="page-header">
+        <h1>Manajemen Ekstrakurikuler</h1>
+        <a href="{{ url_for('add_ekskul_admin') }}" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Tambah Ekskul Baru</a>
     </div>
 
-    {# Jika tidak ada ekskul sama sekali #}
     {% if not ekskul_list %}
-        <p class="text-center">Belum ada data ekstrakurikuler.</p>
+        <p>Belum ada data ekstrakurikuler yang ditambahkan.</p>
+    {% else %}
+        {% for kategori, items_in_kategori in ekskul_list|groupby('kategori') %}
+            <h2 class="category-title">{{ kategori if kategori and kategori|string|trim != "" else 'Tanpa Kategori' }}</h2>
+            
+            <div class="table-wrapper">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nama Ekskul</th>
+                            <th>Pembina</th>
+                            <th>Status</th>
+                            <th>Jadwal</th>
+                            <th>Lokasi</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ekskul_item in items_in_kategori %}
+                        <tr>
+                            <td>{{ ekskul_item.id_ekskul }}</td>
+                            <td>{{ ekskul_item.nama_ekskul }}</td>
+                            <td>{{ ekskul_item.nama_guru_pembina or '-' }}</td>
+                            <td>
+                                {% if ekskul_item.status_aktif %}
+                                    <span class="status-badge status-aktif">Aktif</span>
+                                {% else %}
+                                    <span class="status-badge status-nonaktif">Non-Aktif</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ ekskul_item.jadwal_deskripsi or '-' }}</td>
+                            <td>{{ ekskul_item.lokasi or '-' }}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('ekskul_detail_admin', ekskul_id=ekskul_item.id_ekskul) }}" class="btn btn-info" title="Lihat Detail"><i class="fas fa-eye"></i></a>
+                                    <a href="{{ url_for('edit_ekskul_admin', ekskul_id=ekskul_item.id_ekskul) }}" class="btn btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                    <form action="{{ url_for('delete_ekskul_admin', ekskul_id=ekskul_item.id_ekskul) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ekskul {{ ekskul_item.nama_ekskul }}? Semua data terkait (pendaftaran, materi, absensi) juga akan terhapus.');">
+                                        <button type="submit" class="btn btn-danger" title="Hapus"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
     {% endif %}
-
-    {# Loop melalui kategori hasil groupby #}
-    {% for kategori, items_in_kategori in ekskul_list|groupby('kategori') %}
-        {# Tampilkan nama kategori sebagai heading #}
-        {# Jika kategori adalah None atau string kosong, tampilkan "Tanpa Kategori" #}
-        <h2 class="mt-4 display-6 fs-4">{{ kategori if kategori else 'Tanpa Kategori' }}</h2>
-        
-        {% if items_in_kategori %} {# Pastikan ada item di grup ini #}
-        <div class="table-responsive">
-            <table class="table table-striped table-hover table-sm">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nama Ekskul</th>
-                        {# Kolom kategori tidak perlu ditampilkan lagi di sini karena sudah menjadi heading grup #}
-                        <th>Pembina</th>
-                        <th>Status</th>
-                        <th>Jadwal</th>
-                        <th>Lokasi</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for ekskul_item in items_in_kategori %} {# Variabel loop diubah menjadi ekskul_item #}
-                    <tr>
-                        <td>{{ ekskul_item.id_ekskul }}</td>
-                        <td>{{ ekskul_item.nama_ekskul }}</td>
-                        <td>{{ ekskul_item.nama_guru_pembina if ekskul_item.nama_guru_pembina else '-' }}</td>
-                        <td>
-                            {% if ekskul_item.status_aktif %}
-                                <span class="badge bg-success">Aktif</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Non-Aktif</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ ekskul_item.jadwal_deskripsi if ekskul_item.jadwal_deskripsi else '-' }}</td>
-                        <td>{{ ekskul_item.lokasi if ekskul_item.lokasi else '-' }}</td>
-                        <td>
-                            <a href="{{ url_for('ekskul_detail_admin', ekskul_id=ekskul_item.id_ekskul) }}" class="btn btn-sm btn-outline-info mb-1" title="Lihat Detail"><i class="fas fa-eye"></i> Detail</a>
-                            <a href="{{ url_for('edit_ekskul_admin', ekskul_id=ekskul_item.id_ekskul) }}" class="btn btn-sm btn-outline-warning mb-1" title="Edit"><i class="fas fa-edit"></i> Edit</a>
-                            <form action="{{ url_for('delete_ekskul_admin', ekskul_id=ekskul_item.id_ekskul) }}" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ekskul {{ ekskul_item.nama_ekskul }}? Semua data pendaftaran siswa di ekskul ini juga akan terhapus.');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger mb-1" title="Hapus"><i class="fas fa-trash"></i> Hapus</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% endif %}
-    {% endfor %}
 {% endblock %}
 
 {% block scripts_extra %}
-{# Jika Anda menggunakan Font Awesome untuk ikon, pastikan linknya ada di layout_admin.html atau di sini #}
-{# <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> #}
 {% endblock %}

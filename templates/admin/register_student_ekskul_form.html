@@ -2,29 +2,119 @@
 
 {% block title %}Daftarkan Murid ke Ekskul: {{ ekskul_info.nama_ekskul }}{% endblock %}
 
+{% block head_extra %}
+<style>
+  .form-title {
+    font-size: 1.8rem;
+    color: var(--dark);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .form-container {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    max-width: 700px;
+    margin: 0 auto; 
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .form-group label .required-indicator {
+      color: var(--danger);
+      margin-left: 4px;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: #fff;
+  }
+
+  select.form-control {
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3e%3cpath fill="none" stroke="%23343a40" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m2 5 6 6 6-6"/%3e%3c/svg%3e');
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  }
+
+  .form-help {
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .btn { display: inline-block; padding: 0.7rem 1.5rem; border: none; border-radius: 8px; text-decoration: none; font-weight: 600; cursor: pointer; transition: 0.2s ease; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary { background-color: var(--blue); color: white; }
+  .btn-primary:hover { background-color: #0056b3; }
+  .btn-secondary { background-color: #6c757d; color: white; }
+  .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
 {% block content %}
-    <h1>Daftarkan Murid ke Ekskul: {{ ekskul_info.nama_ekskul }}</h1>
+<div class="form-container">
+    <h1 class="form-title">Daftarkan Murid ke <br><em>{{ ekskul_info.nama_ekskul }}</em></h1>
 
     <form method="POST">
-        <div class="mb-3">
-            <label for="id_murid" class="form-label">Pilih Murid <span class="text-danger">*</span></label>
-            <select class="form-select" id="id_murid" name="id_murid" required>
+        <div class="form-group">
+            <label for="id_murid">Pilih Murid<span class="required-indicator">*</span></label>
+            <select class="form-control" id="id_murid" name="id_murid" required>
                 <option value="">-- Pilih Murid --</option>
                 {% for student in available_students %}
-                    <option value="{{ student.id_pengguna }}">{{ student.nama_lengkap }} (NIS: {{ student.nomor_induk if student.nomor_induk else '-' }})</option>
+                    <option value="{{ student.id_pengguna }}">{{ student.nama_lengkap }} (NIS: {{ student.nomor_induk or '-' }})</option>
                 {% else %}
-                    <option value="" disabled>Tidak ada murid yang bisa didaftarkan saat ini.</option>
+                    <option value="" disabled>Tidak ada murid yang bisa didaftarkan.</option>
                 {% endfor %}
             </select>
-            <small class="form-text text-muted">Hanya menampilkan murid aktif yang belum terdaftar di ekskul ini pada tahun ajaran yang dipilih.</small>
+            <small class="form-help">Hanya menampilkan murid aktif yang belum terdaftar di ekskul ini pada tahun ajaran yang dipilih.</small>
         </div>
 
-        <div class="mb-3">
-            <label for="tahun_ajaran" class="form-label">Tahun Ajaran Pendaftaran <span class="text-danger">*</span></label>
+        <div class="form-group">
+            <label for="tahun_ajaran">Tahun Ajaran Pendaftaran<span class="required-indicator">*</span></label>
             <input type="text" class="form-control" id="tahun_ajaran" name="tahun_ajaran" value="{{ current_tahun_ajaran }}" placeholder="Contoh: 2024/2025" required>
         </div>
 
-        <button type="submit" class="btn btn-primary">Daftarkan Murid</button>
-        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#ekskul-content' }}" class="btn btn-secondary">Batal</a>
+        <div class="form-actions">
+            <a href="{{ cancel_url or url_for('ekskul_detail_admin', ekskul_id=ekskul_info.id_ekskul) }}" class="btn btn-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary">Daftarkan Murid</button>
+        </div>
     </form>
+</div>
 {% endblock %}

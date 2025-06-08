@@ -3,9 +3,7 @@
 {% block title %}Ekstrakurikuler Saya - {{ nama_murid }}{% endblock %}
 
 {% block head_extra %}
-{# CSS spesifik untuk halaman ini #}
 <style>
-    /* Styling H2 khusus untuk .content-container di halaman ini */
     .content-container h2 {
         color: var(--blue, #007bff);
         border-bottom: 2px solid var(--blue, #007bff);
@@ -13,30 +11,24 @@
         margin-bottom: 1.5em;
     }
 
-    /* Styling tabel kustom untuk halaman "Ekskul Saya" */
     .table-ekskul-saya-custom {
         width: 100%;
         margin: 20px 0;
         border-collapse: collapse;
         box-shadow: 0 8px 20px rgba(81, 81, 229, 0.08);
         border-radius: 12px;
-        overflow: hidden; /* Penting agar border-radius pada thead terlihat */
+        overflow: hidden; 
         background: var(--white, #ffffff);
     }
 
     .table-ekskul-saya-custom thead {
-        /* Background gradien diterapkan pada elemen thead */
         background: linear-gradient(90deg, #5151e5 0%, #72edf2 100%);
-        color: var(--white, #ffffff); /* Warna teks default untuk header */
+        color: var(--white, #ffffff);
     }
 
-    /* KUNCI PERBAIKAN untuk GRADIENT:
-      Membuat background th transparan dan menghapus border default-nya 
-      agar gradien dari thead dapat terlihat.
-    */
     .table-ekskul-saya-custom thead th {
-        background-color: transparent ; /* Membuat background th transparan */
-        color: inherit ; /* Mewarisi warna teks dari thead (putih) */
+        background-color: transparent ; 
+        color: inherit ; 
         text-align: left;
         padding: 14px 18px;
         font-weight: 600;
@@ -44,7 +36,7 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         white-space: nowrap;
-        border: none; /* Hapus border default dari th */
+        border: none;
     }
 
     .table-ekskul-saya-custom tbody tr:hover {
@@ -61,7 +53,6 @@
         border-bottom: none;
     }
 
-    /* Badge Status yang dikustomisasi */
     .status-badge {
         padding: 0.35em 0.7em;
         font-size: 0.75rem;
@@ -77,11 +68,10 @@
     .status-badge.berhenti { background-color: #6c757d; }
     .status-badge.default { background-color: #6c757d; }
 
-    /* Tombol Aksi "Detail" yang dikustomisasi */
     .btn-detail-custom {
         display: inline-flex;
         align-items: center;
-        padding: 7px 14px; /* Padding disesuaikan agar tidak terlalu sempit */
+        padding: 7px 14px; 
         font-size: 0.8rem;
         font-weight: 500;
         border-radius: 6px;
@@ -98,11 +88,10 @@
         color: var(--white, #ffffff);
         text-decoration: none;
     }
-    .btn-detail-custom .fas { /* Ikon di dalam tombol */
+    .btn-detail-custom .fas { 
         margin-right: 5px;
     }
 
-    /* Tombol "Kembali ke Dashboard" di bawah tabel */
     .actions-bawah-tabel {
         margin-top: 25px;
         text-align: center;
@@ -120,7 +109,7 @@
     }
     .actions-bawah-tabel .btn-kembali-utama:hover {
         transform: translateY(-2px);
-        background-color: #e6c300; /* Kuning lebih gelap */
+        background-color: #e6c300;
     }
 </style>
 {% endblock %}
@@ -128,12 +117,11 @@
 {% block content %}
 <div class="container content-container">
     <h2>Ekstrakurikuler yang Saya Ikuti</h2>
-    <p>Halo, <strong>{{ nama_murid }}</strong>! Berikut adalah daftar ekstrakurikuler yang sedang atau pernah Anda ikuti pada tahun ajaran {{ tahun_ajaran_aktif }}.</p>
+    <p>Halo, <strong>{{ nama_murid }}</strong>! Berikut adalah daftar ekstrakurikuler yang sedang Anda ikuti.</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-            {# Asumsi .alert, .alert-dismissible, .btn-close dari Bootstrap sudah ada di layout_murid.html #}
             <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -144,7 +132,7 @@
 
     {% if list_ekskul_diikuti %}
         <div class="table-responsive">
-            <table class="table-ekskul-saya-custom"> {# Menggunakan kelas tabel kustom #}
+            <table class="table-ekskul-saya-custom"> 
                 <thead>
                     <tr>
                         <th>Nama Ekstrakurikuler</th>

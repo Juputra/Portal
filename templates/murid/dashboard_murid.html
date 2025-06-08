@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="container">
-    {# Tampilkan flash messages jika ada #}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -45,12 +44,11 @@
             <div class="card-grid">
                 {% for ekskul in ekskul_diikuti_list %}
                 <div class="card">
-                    <div class="card-image-container"> {# Wrapper untuk gambar jika diperlukan styling lebih lanjut #}
+                    <div class="card-image-container">
                         {% if ekskul.url_logo_ekskul %}
                             <img src="{{ url_for('static', filename='uploads/logos/' ~ ekskul.url_logo_ekskul) }}" alt="Logo {{ ekskul.nama_ekskul }}">
                         {% else %}
                             <img src="{{ url_for('static', filename='images/default_logo.png') }}" alt="Logo Ekskul Default"> 
-                            {# Ganti 'images/default_logo.png' dengan path ke logo default Anda #}
                         {% endif %}
                     </div>
                     

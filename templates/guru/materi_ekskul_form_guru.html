@@ -5,77 +5,230 @@
 
 {% block head_extra %}
 <style>
-    .form-control-file {
-        padding: .375rem .75rem;
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+    :root {
+        --blue: #007bff;
+        --dark: #333;
+        --white: #ffffff;
+        --gray: #f4f4f4;
+        --light-gray: #ced4da;
+        --secondary-gray: #6c757d;
     }
-    /* Tambahkan style lain jika perlu */
+
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: var(--gray);
+    }
+
+    .content-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .content-container h2 {
+        color: var(--blue);
+        border-bottom: 2px solid var(--blue);
+        padding-bottom: 0.5em;
+        margin-bottom: 1.5em;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .btn-back {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--blue);
+        background-color: transparent;
+        border: 1px solid var(--blue);
+        border-radius: 25px;
+        padding: 0.5rem 1rem;
+        text-decoration: none;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .btn-back:hover {
+        background-color: var(--blue);
+        color: var(--white);
+    }
+    .btn-back .fas {
+        margin-right: 8px;
+    }
+        .form-card {
+        background-color: var(--white);
+        padding: 2.5rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+        margin-top: 1rem;
+    }
+
+    .form-group-custom {
+        margin-bottom: 1.5rem;
+    }
+    .form-group-custom label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--dark);
+        font-size: 0.9rem;
+    }
+    .form-group-custom label .text-danger {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    .form-group-custom input[type="text"],
+    .form-group-custom select,
+    .form-group-custom textarea {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--light-gray);
+        border-radius: 6px;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background-color: var(--white); 
+    }
+    
+    .form-group-custom input[type="file"] {
+        width: 100%;
+        border: 1px solid var(--light-gray);
+        border-radius: 6px;
+        padding: .5rem .8rem;
+    }
+
+    .form-group-custom input:focus,
+    .form-group-custom select:focus,
+    .form-group-custom textarea:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        outline: none;
+    }
+
+    .form-text-custom {
+        font-size: 0.8rem;
+        color: var(--secondary-gray);
+        display: block;
+        margin-top: 0.5rem;
+    }
+    
+    hr {
+        margin: 2rem 0;
+        border-top: 1px solid #eee;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end; 
+    }
+
+    .btn-submit, .btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+    }
+    .btn-submit .fas, .btn-cancel .fas {
+        margin-right: 8px;
+    }
+
+    .btn-submit {
+        background-color: var(--blue);
+        color: var(--white);
+    }
+    .btn-submit:hover {
+        background-color: #0056b3;
+        transform: translateY(-1px);
+    }
+
+    .btn-cancel {
+        background-color: var(--secondary-gray);
+        color: var(--white);
+    }
+    .btn-cancel:hover {
+        background-color: #5a6268;
+        transform: translateY(-1px);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>{{ form_title }}</h3>
-        <a href="{{ url_for('detail_ekskul_guru', ekskul_id=id_ekskul) }}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left"></i> Kembali ke Detail Ekskul
+<div class="content-container">
+    <h2>
+        <span>{{ form_title }}</span>
+        <a href="{{ url_for('detail_ekskul_guru', ekskul_id=id_ekskul) }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Kembali
         </a>
-    </div>
-    <hr>
+    </h2>
 
     <form method="POST" enctype="multipart/form-data" 
           action="{{ url_for('tambah_materi_ekskul_guru', ekskul_id=id_ekskul) if action == 'Tambah' else url_for('edit_materi_ekskul_guru', ekskul_id=id_ekskul, id_materi_ekskul=id_materi_ekskul) }}">
         
-        <input type="hidden" name="id_ekskul" value="{{ id_ekskul }}">
+        <div class="form-card">
+            <input type="hidden" name="id_ekskul" value="{{ id_ekskul }}">
 
-        <div class="mb-3">
-            <label for="judul_materi" class="form-label">Judul Materi <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="judul_materi" name="judul_materi" 
-                   value="{{ materi_data.judul_materi if materi_data else '' }}" required>
-        </div>
+            <div class="form-group-custom">
+                <label for="judul_materi">Judul Materi <span class="text-danger">*</span></label>
+                <input type="text" id="judul_materi" name="judul_materi" 
+                       value="{{ materi_data.judul_materi if materi_data else '' }}" required>
+            </div>
 
-        <div class="mb-3">
-            <label for="deskripsi_materi" class="form-label">Deskripsi Materi (Opsional)</label>
-            <textarea class="form-control" id="deskripsi_materi" name="deskripsi_materi" rows="3">{{ materi_data.deskripsi_materi if materi_data else '' }}</textarea>
-        </div>
+            <div class="form-group-custom">
+                <label for="deskripsi_materi">Deskripsi Materi (Opsional)</label>
+                <textarea id="deskripsi_materi" name="deskripsi_materi" rows="4">{{ materi_data.deskripsi_materi if materi_data else '' }}</textarea>
+            </div>
 
-        <div class="mb-3">
-            <label for="tipe_konten" class="form-label">Tipe Konten <span class="text-danger">*</span></label>
-            <select class="form-select" id="tipe_konten" name="tipe_konten" required onchange="toggleKontenFields()">
-                <option value="">-- Pilih Tipe --</option>
-                <option value="file" {% if materi_data and materi_data.tipe_konten == 'file' %}selected{% endif %}>File (Dokumen, Gambar, dll.)</option>
-                <option value="link" {% if materi_data and materi_data.tipe_konten == 'link' %}selected{% endif %}>Link Eksternal</option>
-                <option value="video_embed" {% if materi_data and materi_data.tipe_konten == 'video_embed' %}selected{% endif %}>Video Embed (misal: YouTube)</option>
-                <option value="teks" {% if materi_data and materi_data.tipe_konten == 'teks' %}selected{% endif %}>Teks Langsung</option>
-            </select>
-        </div>
+            <div class="form-group-custom">
+                <label for="tipe_konten">Tipe Konten <span class="text-danger">*</span></label>
+                <select id="tipe_konten" name="tipe_konten" required onchange="toggleKontenFields()">
+                    <option value="">-- Pilih Tipe --</option>
+                    <option value="file" {% if materi_data and materi_data.tipe_konten == 'file' %}selected{% endif %}>File (Dokumen, Gambar, dll.)</option>
+                    <option value="link" {% if materi_data and materi_data.tipe_konten == 'link' %}selected{% endif %}>Link Eksternal</option>
+                    <option value="video_embed" {% if materi_data and materi_data.tipe_konten == 'video_embed' %}selected{% endif %}>Video Embed (misal: YouTube)</option>
+                    <option value="teks" {% if materi_data and materi_data.tipe_konten == 'teks' %}selected{% endif %}>Teks Langsung</option>
+                </select>
+            </div>
 
-        <div id="field_file_konten" class="mb-3" style="display: none;">
-            <label for="file_konten" class="form-label">Unggah File</label>
-            <input type="file" class="form-control form-control-file" id="file_konten" name="file_konten">
-            {% if action == 'Edit' and materi_data and materi_data.tipe_konten == 'file' and materi_data.path_konten_atau_link %}
-            <small class="form-text text-muted">File saat ini: {{ materi_data.path_konten_atau_link }}. Unggah file baru untuk mengganti.</small>
-            {% endif %}
-        </div>
+            <div id="field_file_konten" class="form-group-custom" style="display: none;">
+                <label for="file_konten">Unggah File</label>
+                <input type="file" id="file_konten" name="file_konten">
+                {% if action == 'Edit' and materi_data and materi_data.tipe_konten == 'file' and materi_data.path_konten_atau_link %}
+                <small class="form-text-custom">File saat ini: <strong>{{ materi_data.path_konten_atau_link }}</strong>. Unggah file baru untuk mengganti.</small>
+                {% endif %}
+            </div>
 
-        <div id="field_path_konten_atau_link_url" class="mb-3" style="display: none;">
-            <label for="path_konten_atau_link_url" class="form-label">URL atau Kode Embed <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="path_konten_atau_link_url" name="path_konten_atau_link_url" 
-                   value="{{ materi_data.path_konten_atau_link_url if materi_data and 'path_konten_atau_link_url' in materi_data else (materi_data.path_konten_atau_link if materi_data and materi_data.tipe_konten in ['link', 'video_embed'] else '') }}">
-            <small id="url_help" class="form-text text-muted" style="display: none;">Contoh: https://www.contoh.com atau kode embed dari YouTube.</small>
-        </div>
-        
-        <div id="field_isi_konten_teks_area" class="mb-3" style="display: none;">
-            <label for="isi_konten_teks_area" class="form-label">Isi Konten Teks <span class="text-danger">*</span></label>
-            <textarea class="form-control" id="isi_konten_teks_area" name="isi_konten_teks_area" rows="8">{{ materi_data.isi_konten_teks_area if materi_data and 'isi_konten_teks_area' in materi_data else (materi_data.isi_konten_teks if materi_data and materi_data.tipe_konten == 'teks' else '') }}</textarea>
-        </div>
+            <div id="field_path_konten_atau_link_url" class="form-group-custom" style="display: none;">
+                <label for="path_konten_atau_link_url">URL atau Kode Embed <span class="text-danger">*</span></label>
+                <textarea id="path_konten_atau_link_url" name="path_konten_atau_link_url" rows="3">{{ materi_data.path_konten_atau_link_url if materi_data and 'path_konten_atau_link_url' in materi_data else (materi_data.path_konten_atau_link if materi_data and materi_data.tipe_konten in ['link', 'video_embed'] else '') }}</textarea>
+                <small id="url_help" class="form-text-custom" style="display: none;">Contoh: https://www.contoh.com atau kode embed dari YouTube.</small>
+            </div>
+            
+            <div id="field_isi_konten_teks_area" class="form-group-custom" style="display: none;">
+                <label for="isi_konten_teks_area">Isi Konten Teks <span class="text-danger">*</span></label>
+                <textarea id="isi_konten_teks_area" name="isi_konten_teks_area" rows="8">{{ materi_data.isi_konten_teks_area if materi_data and 'isi_konten_teks_area' in materi_data else (materi_data.isi_konten_teks if materi_data and materi_data.tipe_konten == 'teks' else '') }}</textarea>
+            </div>
 
-        <hr>
-        <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> {{ "Simpan Perubahan" if action == "Edit" else "Simpan Materi" }}
-        </button>
-        <a href="{{ url_for('detail_ekskul_guru', ekskul_id=id_ekskul) }}" class="btn btn-secondary">
-            <i class="fas fa-times"></i> Batal
-        </a>
+            <hr>
+
+            <div class="action-buttons">
+                <a href="{{ url_for('detail_ekskul_guru', ekskul_id=id_ekskul) }}" class="btn-cancel">
+                    <i class="fas fa-times"></i> Batal
+                </a>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-save"></i> {{ "Simpan Perubahan" if action == "Edit" else "Simpan Materi" }}
+                </button>
+            </div>
+        </div>
     </form>
 </div>
 {% endblock %}
@@ -93,23 +246,20 @@
         const inputFile = document.getElementById('file_konten');
         const inputTextarea = document.getElementById('isi_konten_teks_area');
 
-        // Sembunyikan semua dulu
+
         fieldFile.style.display = 'none';
         fieldUrlEmbed.style.display = 'none';
         fieldTeks.style.display = 'none';
         urlHelp.style.display = 'none';
 
-        // Setel semua input terkait konten menjadi tidak required dulu
+ 
         if (inputUrlEmbed) inputUrlEmbed.required = false;
-        if (inputFile) inputFile.required = false; // Untuk add, file wajib jika tipe file. Untuk edit, tidak wajib jika sudah ada.
+        if (inputFile) inputFile.required = false;
         if (inputTextarea) inputTextarea.required = false;
-
 
         if (tipeKonten === 'file') {
             fieldFile.style.display = 'block';
-            // Untuk 'Tambah', file wajib. Untuk 'Edit', file tidak wajib jika sudah ada file lama.
-            // Logika 'required' untuk file di sisi client bisa kompleks, validasi utama di server.
-            // Jika action 'Tambah', maka file wajib.
+
             {% if action == 'Tambah' %}
             if (inputFile) inputFile.required = true;
             {% endif %}
@@ -123,7 +273,7 @@
         }
     }
 
-    // Panggil saat halaman dimuat untuk setel field yang benar berdasarkan nilai yang sudah ada (untuk edit)
+
     document.addEventListener('DOMContentLoaded', toggleKontenFields);
 </script>
 {% endblock %}

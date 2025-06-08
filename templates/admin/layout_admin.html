@@ -3,72 +3,200 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Admin Portal{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>{% block title %}Admin Portal - Portal Ekstrakurikuler{% endblock %}</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
     <style>
-        body { padding-top: 5rem; }
-        .main-content { margin-top: 20px; }
-    </style>    
+      :root {
+        --blue: #007bff;
+        --yellow: #ffd700;
+        --white: #ffffff;
+        --gray: #f4f4f4;
+        --dark: #333;
+        --danger: #dc3545;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Poppins', sans-serif;
+        background-color: var(--gray);
+        color: var(--dark);
+        line-height: 1.6;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      header {
+        background: var(--blue);
+        color: var(--white);
+        padding: 2rem 1rem;
+        text-align: center;
+        background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+      }
+
+      header h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      nav {
+        background: var(--dark);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        padding: 0.5rem 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      nav a, .nav-text {
+        color: white;
+        text-decoration: none;
+        padding: 0.8rem 1rem;
+        transition: background 0.3s ease, color 0.3s ease;
+      }
+
+      nav a:hover, nav a.active {
+        background: var(--blue);
+        color: var(--white);
+      }
+      nav a .fas {
+        margin-right: 8px;
+      }
+      
+      .nav-logout {
+          background-color: var(--danger);
+          border-radius: 5px;
+          margin-left: 1rem;
+      }
+      .nav-logout:hover {
+          background-color: #c82333;
+      }
+      
+      .nav-text {
+          font-weight: 600;
+          color: var(--yellow);
+      }
+
+      .main-content-wrapper {
+        flex-grow: 1;
+      }
+      
+        footer {
+        text-align: center;
+        padding: 1.5rem;
+        background-color: #002b5b; 
+        color: white;
+        margin-top: auto;
+      }
+
+      .container {
+        max-width: 1200px; 
+        margin: 2rem auto;
+        padding: 1.5rem;
+        background: var(--white);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+      }
+
+      h2 {
+        color: var(--blue);
+        margin-bottom: 1.5rem;
+        border-left: 6px solid var(--yellow);
+        padding-left: 12px;
+        font-size: 1.8rem;
+      }
+
+      .alert {
+        position: relative;
+        padding: 1rem 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+        border-radius: .25rem;
+      }
+      .alert-success { color: #0f5132; background-color: #d1e7dd; border-color: #badbcc; }
+      .alert-danger { color: #842029; background-color: #f8d7da; border-color: #f5c2c7; }
+      .alert-warning { color: #664d03; background-color: #fff3cd; border-color: #ffecb5; }
+      .alert-info { color: #055160; background-color: #cff4fc; border-color: #b6effb; }
+      .btn-close {
+        box-sizing: content-box;
+        width: 1em; height: 1em;
+        padding: .25em .25em;
+        color: #000;
+        background: transparent;
+        border: 0;
+        border-radius: .25rem;
+        opacity: .5;
+        float: right;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+      }
+      
+      @media screen and (max-width: 992px) {
+        nav {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+        }
+        .nav-text, .nav-logout {
+            margin-left: 0;
+            margin-top: 0.5rem;
+            border-radius: 0;
+        }
+      }
+    </style>
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('dashboard_admin') }}">Admin Portal</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarsExampleDefault">
-                {% if session.user_id and session.peran == 'admin' %}
-                <ul class="navbar-nav me-auto mb-2 mb-md-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard_admin') }}">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('users_admin') }}">Pengguna</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ekskul_admin') }}">Ekstrakurikuler</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('materi_ekskul_admin') }}">Materi Ekskul</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('list_absensi_ekskul_admin') }}">Absensi</a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav ms-auto">
-                     <li class="nav-item">
-                        <span class="navbar-text me-3">Halo, {{ session.nama_lengkap }}!</span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="btn btn-outline-danger" href="{{ url_for('logout') }}">Logout</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint.startswith('pengumuman_admin') or request.endpoint == 'tambah_pengumuman_admin' %}active{% endif %}" 
-                        href="{{ url_for('pengumuman_admin') }}">Pengumuman</a>
-                    </li>
-                </ul>
-                {% endif %}
-            </div>
-        </div>
+    <header>
+        <h1>Portal Admin</h1>
+        <p>Manajemen Sistem Portal Ekstrakurikuler</p>
+    </header>
+
+    {% if session.user_id and session.peran == 'admin' %}
+    <nav>
+        <a href="{{ url_for('dashboard_admin') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="{{ url_for('users_admin') }}"><i class="fas fa-users"></i> Pengguna</a>
+        <a href="{{ url_for('ekskul_admin') }}"><i class="fas fa-futbol"></i> Ekstrakurikuler</a>
+        <a href="{{ url_for('kelola_pendaftaran_ekskul_admin') }}"><i class="fas fa-clipboard-list"></i> Pendaftaran</a>
+        <a href="{{ url_for('materi_ekskul_admin') }}"><i class="fas fa-book"></i> Materi Ekskul</a>
+        <a href="{{ url_for('list_absensi_ekskul_admin') }}"><i class="fas fa-calendar-check"></i> Absensi</a>
+        <a href="{{ url_for('pengumuman_admin') }}"><i class="fas fa-bullhorn"></i> Pengumuman</a>
+        <a class="nav-logout" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </nav>
+    {% endif %}
 
-    <main class="container main-content">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        {% block content %}
-        {% endblock %}
-    </main>
+    <div class="main-content-wrapper">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" onclick="this.parentElement.style.display='none';">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    {% block scripts_extra %}{% endblock %}
+    <footer>
+      &copy; {{ now.year if now else '2025' }} Ekstrakurikuler Sekolah - Dibuat dengan <span style="color: var(--blue);">💙</span><span style="color: var(--yellow);">💛</span>
+    </footer>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html>

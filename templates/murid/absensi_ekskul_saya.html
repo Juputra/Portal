@@ -4,7 +4,6 @@
 
 {% block head_extra %}
 <style>
-    /* Styling H2 utama halaman ini */
     .content-container h2 {
         color: var(--blue, #007bff);
         border-bottom: 2px solid var(--blue, #007bff);
@@ -12,89 +11,83 @@
         margin-bottom: 1.5em;
     }
 
-    /* Kartu untuk setiap rekap ekskul */
     .rekap-absen-ekskul-card {
         background-color: var(--white, #ffffff);
         border-radius: 12px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.07); /* Sedikit penyesuaian shadow */
+        box-shadow: 0 6px 18px rgba(0,0,0,0.07);
         margin-bottom: 2rem;
-        overflow: hidden; /* Agar header tidak keluar dari radius */
+        overflow: hidden; 
     }
 
     .rekap-absen-ekskul-card .card-header-custom {
-    background-color: var(--blue, #007bff); /* GANTI dari var(--dark) menjadi var(--blue) */
-    color: var(--white, #ffffff); /* Warna teks tetap putih agar kontras dengan biru */
+    background-color: var(--blue, #007bff); 
+    color: var(--white, #ffffff); 
     padding: 1rem 1.5rem;
     font-size: 1.25rem;
     font-weight: 600;
-    /* Anda bisa tambahkan border bawah tipis jika suka, untuk memisahkan header dari body kartu */
-    /* border-bottom: 1px solid rgba(0,0,0,0.075); */
 }
-.rekap-absen-ekskul-card .card-header-custom h4 { /* Pastikan h4 di dalamnya juga mengikuti style */
+    .rekap-absen-ekskul-card .card-header-custom h4 { 
     margin: 0;
     font-size: inherit;
-    font-weight: inherit; /* Mewarisi ketebalan font dari parent */
-    color: inherit; /* Mewarisi warna teks dari parent *
+    font-weight: inherit;
+    color: inherit; }
 
     .rekap-absen-ekskul-card .card-body-custom {
         padding: 1.5rem;
     }
 
-    /* Tabel untuk detail absensi */
     .table-rekap-absen {
         width: 100%;
         border-collapse: collapse;
         margin-top: 1rem;
-        font-size: 0.9rem; /* Ukuran font isi tabel */
+        font-size: 0.9rem;
     }
 
     .table-rekap-absen thead {
-        /* Menggunakan gradien seperti tabel di ekskul_saya.html */
-        background: linear-gradient(90deg, #5e5ee0 0%, #72edf2 100%); /* Sedikit penyesuaian warna gradien */
+        background: linear-gradient(90deg, #5e5ee0 0%, #72edf2 100%); 
         color: var(--white, #ffffff);
     }
 
     .table-rekap-absen thead th {
-        background-color: transparent !important; /* Pastikan gradien thead terlihat */
+        background-color: transparent !important; 
         color: inherit !important;
         text-align: left;
         padding: 12px 15px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        font-size: 0.85rem; /* Ukuran font header tabel */
+        font-size: 0.85rem; 
         border: none;
     }
 
     .table-rekap-absen tbody tr:hover {
-        background-color: #f5f9fd; /* Warna hover lebih lembut */
+        background-color: #f5f9fd; 
     }
 
     .table-rekap-absen tbody td {
         padding: 10px 15px;
-        border-bottom: 1px solid #eef2f7; /* Border antar baris lebih lembut */
+        border-bottom: 1px solid #eef2f7; 
         vertical-align: middle;
     }
     .table-rekap-absen tbody tr:last-child td {
         border-bottom: none;
     }
 
-    /* Badge Status Kehadiran */
     .absen-status-badge {
         padding: 0.35em 0.75em;
         font-size: 0.75rem;
         font-weight: 600;
-        border-radius: 15px; /* Badge lebih bulat */
+        border-radius: 15px;
         color: var(--white, #ffffff);
         text-transform: capitalize;
     }
-    .absen-status-badge.hadir { background-color: #28a745; }  /* Hijau */
-    .absen-status-badge.izin { background-color: #17a2b8; }   /* Info/Cyan */
-    .absen-status-badge.sakit { background-color: #ffc107; color: var(--dark, #333); } /* Kuning */
-    .absen-status-badge.alfa { background-color: #dc3545; }   /* Merah */
-    .absen-status-badge.default { background-color: #6c757d; } /* Abu-abu */
+    .absen-status-badge.hadir { background-color: #28a745; }
+    .absen-status-badge.izin { background-color: #17a2b8; }
+    .absen-status-badge.sakit { background-color: #ffc107; color: var(--dark, #333); } 
+    .absen-status-badge.alfa { background-color: #dc3545; }   
+    .absen-status-badge.default { background-color: #6c757d; } 
 
-    .no-records-info { /* Pesan jika tidak ada catatan */
+    .no-records-info {
         color: #555;
         font-style: italic;
         padding: 1rem 0;
@@ -167,13 +160,12 @@
             </div>
         {% endfor %}
     {% else %}
-        {# Asumsi .alert dan .alert-info dari Bootstrap sudah ada di layout #}
         <div class="alert alert-info mt-3" role="alert">
             Belum ada catatan absensi ekstrakurikuler untuk Anda pada tahun ajaran ini.
         </div>
     {% endif %}
 
-    <div class="actions-bawah-tabel" style="margin-top: 2rem;"> {# Menggunakan kelas .actions-bawah-tabel dan .cta dari layout #}
+    <div class="actions-bawah-tabel" style="margin-top: 2rem;">
         <a class="cta" href="{{ url_for('dashboard_murid') }}">
             <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
         </a>

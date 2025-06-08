@@ -2,79 +2,203 @@
 
 {% block title %}{{ action }} Ekstrakurikuler{% endblock %}
 
+{% block head_extra %}
+<style>
+  .form-title {
+    font-size: 1.8rem;
+    color: var(--dark);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .form-container {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group.full-width {
+      grid-column: 1 / -1;
+  }
+  
+  .form-group label {
+    font-weight: 600;
+    color: #333;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  }
+
+  textarea.form-control {
+      resize: vertical;
+      min-height: 120px;
+  }
+
+  .form-help {
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+
+  .form-check {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+  }
+  .form-check input[type="checkbox"] {
+    width: 1.25em;
+    height: 1.25em;
+    cursor: pointer;
+  }
+  .form-check label {
+      font-weight: normal;
+      cursor: pointer;
+  }
+
+  /* Gaya untuk input file */
+  .logo-preview img {
+      max-width: 120px;
+      max-height: 120px;
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 5px;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .btn { display: inline-block; padding: 0.7rem 1.5rem; border: none; border-radius: 8px; text-decoration: none; font-weight: 600; cursor: pointer; transition: 0.2s ease; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary { background-color: var(--blue); color: white; }
+  .btn-primary:hover { background-color: #0056b3; }
+  .btn-secondary { background-color: #6c757d; color: white; }
+  .btn-secondary:hover { background-color: #5a6268; }
+
+</style>
+{% endblock %}
+
 {% block content %}
-    <h1>{{ action }} Ekstrakurikuler</h1>
+<div class="form-container">
+    <h1 class="form-title">{{ action }} Ekstrakurikuler</h1>
+
     <form method="POST" action="{{ url_for('edit_ekskul_admin', ekskul_id=ekskul_data.id_ekskul) if action == 'Edit' else url_for('add_ekskul_admin') }}" enctype="multipart/form-data">
-        <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="status_aktif" name="status_aktif" value="1" {% if ekskul_data and ekskul_data.status_aktif %}checked{% endif %}>
-            <label class="form-check-label" for="status_aktif">Aktif</label>
-        </div>
-        <div class="mb-3">
-            <label for="nama_ekskul" class="form-label">Nama Ekstrakurikuler</label>
-            <input type="text" class="form-control" id="nama_ekskul" name="nama_ekskul" value="{{ ekskul_data.nama_ekskul if ekskul_data else '' }}" required>
-        </div>
-        <div class="form-group-custom mb-3"> {# Gunakan kelas styling form Anda #}
-            <label for="logo_file">Unggah Logo Ekskul (Opsional)</label>
-            <input type="file" class="form-control-file-custom" id="logo_file" name="logo_file">
-            {% if ekskul_data and ekskul_data.url_logo_ekskul %}
-                <div class="mt-2">
-                    <small>Logo Saat Ini:</small><br>
-                    <img src="{{ url_for('static', filename='uploads/logos/' ~ ekskul_data.url_logo_ekskul) }}" alt="Logo {{ ekskul_data.nama_ekskul }}" style="max-width: 100px; max-height: 100px; margin-top: 5px; border:1px solid #ddd;">
-                    <br>
-                    {# Opsional: Tambahkan checkbox untuk menghapus logo saat ini #}
-                    {# 
-                    <input type="checkbox" name="hapus_logo_sekarang" id="hapus_logo_sekarang" value="1">
-                    <label for="hapus_logo_sekarang"><small>Hapus logo saat ini</small></label>
-                    #}
-                </div>
-            {% endif %}
-            <small class="form-text text-muted">Format yang diizinkan: PNG, JPG, JPEG, GIF, SVG, WEBP.</small>
-        </div>
-         <div class="mb-3">
-            <label for="id_guru_pembina" class="form-label">Guru Pembina</label>
-            <select class="form-select" id="id_guru_pembina" name="id_guru_pembina">
-                <option value="">-- Pilih Guru Pembina --</option>
-                {% for guru in list_guru %}
-                <option value="{{ guru.id_pengguna }}" {% if ekskul_data and ekskul_data.id_guru_pembina == guru.id_pengguna %}selected{% endif %}>{{ guru.nama_lengkap }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="lokasi" class="form-label">Lokasi</label>
-            <input type="text" class="form-control" id="lokasi" name="lokasi" value="{{ ekskul_data.lokasi if ekskul_data else '' }}">
+        
+        <div class="form-group full-width">
+            <div class="form-check">
+                <input type="checkbox" id="status_aktif" name="status_aktif" value="1" {% if ekskul_data.status_aktif or action == 'Tambah' %}checked{% endif %}>
+                <label for="status_aktif">Jadikan ekstrakurikuler ini aktif dan dapat dilihat oleh siswa</label>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label for="jadwal_deskripsi" class="form-label">Jadwal Deskripsi (Contoh: Setiap Sabtu, 09:00-11:00)</label>
-            <input type="text" class="form-control" id="jadwal_deskripsi" name="jadwal_deskripsi" value="{{ ekskul_data.jadwal_deskripsi if ekskul_data else '' }}">
+        <div class="form-group full-width">
+            <label for="nama_ekskul">Nama Ekstrakurikuler*</label>
+            <input type="text" class="form-control" id="nama_ekskul" name="nama_ekskul" value="{{ ekskul_data.nama_ekskul or '' }}" required>
         </div>
-        <div class="mb-3">
-            <label for="deskripsi" class="form-label">Deskripsi Ekskul</label>
-            <textarea class="form-control" id="deskripsi" name="deskripsi" rows="4">{{ ekskul_data.deskripsi if ekskul_data and ekskul_data.deskripsi is not none else '' }}</textarea>
-            <small class="form-text text-muted">Jelaskan tentang kegiatan ekstrakurikuler ini.</small>
+
+        <div class="form-group full-width">
+            <label for="deskripsi">Deskripsi</label>
+            <textarea class="form-control" id="deskripsi" name="deskripsi" rows="4">{{ ekskul_data.deskripsi or '' }}</textarea>
+            <small class="form-help">Jelaskan secara singkat tentang kegiatan ekstrakurikuler ini.</small>
         </div>
-        <div class="mb-3">
-            <label for="kategori" class="form-label">Kategori Ekskul</label>
-            <select class="form-select" id="kategori" name="kategori">
-                <option value="">-- Pilih Kategori --</option>
-                <option value="Olahraga" {% if ekskul_data and ekskul_data.kategori == 'Olahraga' %}selected{% endif %}>Olahraga</option>
-                <option value="Seni" {% if ekskul_data and ekskul_data.kategori == 'Seni' %}selected{% endif %}>Seni</option>
-                <option value="Akademik" {% if ekskul_data and ekskul_data.kategori == 'Akademik' %}selected{% endif %}>Akademik</option>
-                <option value="Keagamaan" {% if ekskul_data and ekskul_data.kategori == 'Keagamaan' %}selected{% endif %}>Keagamaan</option>
-                <option value="Teknologi" {% if ekskul_data and ekskul_data.kategori == 'Teknologi' %}selected{% endif %}>Sains & Teknologi</option>
-                <option value="Bahasa" {% if ekskul_data and ekskul_data.kategori == 'Bahasa' %}selected{% endif %}>Bahasa</option>
-                <option value="Lainnya" {% if ekskul_data and ekskul_data.kategori == 'Lainnya' %}selected{% endif %}>Lainnya</option>
-                {# Jika kategori disimpan di database (tabel KategoriEkskul terpisah), Anda bisa mengisi opsi ini secara dinamis #}
-            </select>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="kategori">Kategori</label>
+                <select class="form-control" id="kategori" name="kategori">
+                    <option value="">-- Pilih Kategori --</option>
+                    <option value="Olahraga" {% if ekskul_data.kategori == 'Olahraga' %}selected{% endif %}>Olahraga</option>
+                    <option value="Seni" {% if ekskul_data.kategori == 'Seni' %}selected{% endif %}>Seni</option>
+                    <option value="Akademik" {% if ekskul_data.kategori == 'Akademik' %}selected{% endif %}>Akademik</option>
+                    <option value="Keagamaan" {% if ekskul_data.kategori == 'Keagamaan' %}selected{% endif %}>Keagamaan</option>
+                    <option value="Teknologi" {% if ekskul_data.kategori == 'Teknologi' %}selected{% endif %}>Sains & Teknologi</option>
+                    <option value="Bahasa" {% if ekskul_data.kategori == 'Bahasa' %}selected{% endif %}>Bahasa</option>
+                    <option value="Lainnya" {% if ekskul_data.kategori == 'Lainnya' %}selected{% endif %}>Lainnya</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="id_guru_pembina">Guru Pembina</label>
+                <select class="form-control" id="id_guru_pembina" name="id_guru_pembina">
+                    <option value="">-- Pilih Guru Pembina --</option>
+                    {% for guru in list_guru %}
+                    <option value="{{ guru.id_pengguna }}" {% if ekskul_data.id_guru_pembina == guru.id_pengguna %}selected{% endif %}>{{ guru.nama_lengkap }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
-        <div class="mb-3">
-            <label for="kuota_maksimal" class="form-label">Kuota Maksimal</label>
-            <input type="number" class="form-control" id="kuota_maksimal" name="kuota_maksimal" 
-                value="{{ ekskul_data.kuota_maksimal if ekskul_data and ekskul_data.kuota_maksimal is not none else '' }}" 
-                min="0" placeholder="Contoh: 30 (kosongkan jika tidak terbatas)">
-            <small class="form-text text-muted">Kosongkan field ini jika tidak ada batasan kuota.</small>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="jadwal_deskripsi">Jadwal (Contoh: Setiap Sabtu, 09:00-11:00)</label>
+                <input type="text" class="form-control" id="jadwal_deskripsi" name="jadwal_deskripsi" value="{{ ekskul_data.jadwal_deskripsi or '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="lokasi">Lokasi</label>
+                <input type="text" class="form-control" id="lokasi" name="lokasi" value="{{ ekskul_data.lokasi or '' }}">
+            </div>
         </div>
-        <button type="submit" class="btn btn-primary">{{ action }} Ekstrakurikuler</button>
-        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#ekskul-content' }}" class="btn btn-secondary">Batal</a>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="kuota_maksimal">Kuota Maksimal</label>
+                <input type="number" class="form-control" id="kuota_maksimal" name="kuota_maksimal" value="{{ ekskul_data.kuota_maksimal if ekskul_data.kuota_maksimal is not none else '' }}" min="0" placeholder="Kosongkan jika tidak terbatas">
+                <small class="form-help">Biarkan kosong jika tidak ada batasan kuota.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="logo_file">Logo Ekskul (Opsional)</label>
+                <input type="file" class="form-control" id="logo_file" name="logo_file">
+                {% if ekskul_data.url_logo_ekskul %}
+                <div class="logo-preview">
+                    <small class="form-help">Logo Saat Ini:</small><br>
+                    <img src="{{ url_for('static', filename='uploads/logos/' ~ ekskul_data.url_logo_ekskul) }}" alt="Logo {{ ekskul_data.nama_ekskul }}">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ cancel_url or url_for('ekskul_admin') }}" class="btn btn-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary">{{ action }} Ekskul</button>
+        </div>
     </form>
+</div>
 {% endblock %}

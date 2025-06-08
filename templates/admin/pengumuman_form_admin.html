@@ -2,42 +2,131 @@
 
 {% block title %}{{ action }} Pengumuman{% endblock %}
 
+{% block head_extra %}
+<style>
+  .form-title {
+    font-size: 1.8rem;
+    color: var(--dark);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .form-container {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .form-group label .required-indicator {
+      color: var(--danger);
+      margin-left: 4px;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: #fff;
+  }
+
+  select.form-control {
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"%3e%3cpath fill="none" stroke="%23343a40" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m2 5 6 6 6-6"/%3e%3c/svg%3e');
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  }
+
+  textarea.form-control {
+      resize: vertical;
+      min-height: 150px;
+  }
+  
+  .form-help {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 1.5rem;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .btn { display: inline-block; padding: 0.7rem 1.5rem; border: none; border-radius: 8px; text-decoration: none; font-weight: 600; cursor: pointer; transition: 0.2s ease; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary { background-color: var(--blue); color: white; }
+  .btn-primary:hover { background-color: #0056b3; }
+  .btn-secondary { background-color: #6c757d; color: white; }
+  .btn-secondary:hover { background-color: #5a6268; }
+</style>
+{% endblock %}
+
 {% block content %}
-    <h1>{{ action }} Pengumuman</h1>
-    <form method="POST"> {# Action form akan otomatis ke rute saat ini jika tidak diset #}
-        <div class="mb-3">
-            <label for="judul_pengumuman" class="form-label">Judul <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="judul_pengumuman" name="judul_pengumuman" 
-                   value="{{ pengumuman_data.judul_pengumuman if pengumuman_data else '' }}" required>
+<div class="form-container">
+    <h1 class="form-title">{{ action }} Pengumuman</h1>
+    <form method="POST">
+        <div class="form-group">
+            <label for="judul_pengumuman">Judul<span class="required-indicator">*</span></label>
+            <input type="text" class="form-control" id="judul_pengumuman" name="judul_pengumuman" value="{{ pengumuman_data.judul_pengumuman or '' }}" required>
         </div>
-        <div class="mb-3">
-            <label for="isi_pengumuman" class="form-label">Isi Pengumuman <span class="text-danger">*</span></label>
-            <textarea class="form-control" id="isi_pengumuman" name="isi_pengumuman" rows="5" required>{{ pengumuman_data.isi_pengumuman if pengumuman_data else '' }}</textarea>
+        <div class="form-group">
+            <label for="isi_pengumuman">Isi Pengumuman<span class="required-indicator">*</span></label>
+            <textarea class="form-control" id="isi_pengumuman" name="isi_pengumuman" rows="5" required>{{ pengumuman_data.isi_pengumuman or '' }}</textarea>
         </div>
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label for="target_peran" class="form-label">Target Peran</label>
-                <select class="form-select" id="target_peran" name="target_peran">
-                    <option value="" {% if pengumuman_data and not pengumuman_data.target_peran %}selected{% endif %}>Semua Peran</option>
-                    <option value="admin" {% if pengumuman_data and pengumuman_data.target_peran == 'admin' %}selected{% endif %}>Admin</option>
-                    <option value="guru" {% if pengumuman_data and pengumuman_data.target_peran == 'guru' %}selected{% endif %}>Guru</option>
-                    <option value="murid" {% if pengumuman_data and pengumuman_data.target_peran == 'murid' %}selected{% endif %}>Murid</option>
+        
+        <hr style="margin: 2rem 0;">
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="target_peran">Target Peran</label>
+                <select class="form-control" id="target_peran" name="target_peran">
+                    <option value="semua" {% if not pengumuman_data.target_peran or pengumuman_data.target_peran == 'semua' %}selected{% endif %}>Semua Pengguna</option>
+                    <option value="admin" {% if pengumuman_data.target_peran == 'admin' %}selected{% endif %}>Hanya Admin</option>
+                    <option value="guru" {% if pengumuman_data.target_peran == 'guru' %}selected{% endif %}>Hanya Guru</option>
+                    <option value="murid" {% if pengumuman_data.target_peran == 'murid' %}selected{% endif %}>Hanya Murid</option>
                 </select>
             </div>
-            <div class="col-md-4 mb-3">
-                <label for="target_kelas_id" class="form-label">Target Kelas (Opsional)</label>
-                <select class="form-select" id="target_kelas_id" name="target_kelas_id">
-                    <option value="">-- Tidak Spesifik Kelas --</option>
-                    {% for kelas_item in list_kelas %}
-                    <option value="{{ kelas_item.id_kelas }}" {% if pengumuman_data and pengumuman_data.target_kelas_id == kelas_item.id_kelas %}selected{% endif %}>
-                        {{ kelas_item.nama_kelas }} ({{ kelas_item.tahun_ajaran }})
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4 mb-3">
-                <label for="target_ekskul_id" class="form-label">Target Ekskul (Opsional)</label>
-                <select class="form-select" id="target_ekskul_id" name="target_ekskul_id">
+            
+            <div class="form-group">
+                <label for="target_ekskul_id">Target Spesifik Ekskul (Opsional)</label>
+                <select class="form-control" id="target_ekskul_id" name="target_ekskul_id">
                     <option value="">-- Tidak Spesifik Ekskul --</option>
                     {% for ekskul_item in list_ekskul %}
                     <option value="{{ ekskul_item.id_ekskul }}" {% if pengumuman_data and pengumuman_data.target_ekskul_id == ekskul_item.id_ekskul %}selected{% endif %}>
@@ -47,9 +136,12 @@
                 </select>
             </div>
         </div>
-        <p><small class="text-muted">Jika Target Peran, Kelas, dan Ekskul tidak dipilih, pengumuman akan berlaku untuk semua pengguna.</small></p>
+        <p class="form-help">Jika target peran, kelas, dan ekskul tidak dipilih secara spesifik, pengumuman akan ditampilkan untuk semua pengguna.</p>
 
-        <button type="submit" class="btn btn-primary">{{ action }} Pengumuman</button>
-        <a href="{{ cancel_url if cancel_url else url_for('dashboard_admin') + '#pengumuman-content' }}" class="btn btn-secondary">Batal</a>
+        <div class="form-actions">
+            <a href="{{ cancel_url or url_for('pengumuman_admin') }}" class="btn btn-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary">{{ action }} Pengumuman</button>
+        </div>
     </form>
+</div>
 {% endblock %}
